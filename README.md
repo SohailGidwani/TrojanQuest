@@ -1,6 +1,6 @@
 # TrojanQuest
 
-Collect stickers, discover USC, meet other Trojans. Built for Replit with React/Vite, Express/TypeScript, Supabase and local Ollama.
+Collect stickers, discover USC, meet other Trojans. Built with React/Vite, Express/TypeScript, Supabase and local Ollama.
 
 ## Run locally
 
@@ -36,13 +36,26 @@ After building, Express serves the client at http://localhost:3001. The client i
 
 Missing credentials, database helpers or content produce explicit errors rather than fake results. See [team integration handoff](docs/sohail-handoff.md).
 
-## Replit
+## Supabase setup
 
-Import the GitHub repository, run `npm ci`, copy `.env.example` values into Replit Secrets and click Run. `.replit` runs both services in development; deployment builds the client and serves it through Express.
+Put the project's URL and publishable (or legacy anon) key in your local `.env`:
 
-**Ollama networking matters:** Replit's `127.0.0.1` refers to Replit, not your laptop. Set `OLLAMA_BASE_URL` to a reachable, private Ollama host for the deployed server, or run the demo server locally. Keep the laptop awake for a local demo. Ollama cloud is not a drop-in for this implementation because its structured-output support differs. Never expose an unauthenticated Ollama port publicly.
+```dotenv
+SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+SUPABASE_ANON_KEY=YOUR_PUBLISHABLE_OR_ANON_KEY
+VITE_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+VITE_SUPABASE_ANON_KEY=YOUR_PUBLISHABLE_OR_ANON_KEY
+```
 
-Optional tooling: I strongly recommend `npm i -g vercel` if you want agentic Vercel features such as `vercel env pull`, `vercel deploy` and `vercel logs`. The team deployment target remains Replit.
+Enable anonymous sign-ins in Supabase Auth. These values and anonymous auth are sufficient for the current AI routes to verify sessions. No database password or service-role key is needed by the current AI auth code. Kartik owns database migrations, row-level security policies, database helpers and Realtime publication for `popups`; those are still needed for persisted live pins. A privileged key, if his server-side helpers need one, belongs only in `SUPABASE_SERVICE_ROLE_KEY`, never any `VITE_` variable. [Anonymous auth setup](https://supabase.com/docs/guides/auth/auth-anonymous).
+
+## Hosting
+
+No hosting provider is required for local development. Build with `npm run build`, then serve the app with `npm start`. The original team plan is preserved in `docs/team-build-plan.md`; its Replit requirement has been superseded.
+
+If you host Express separately from Ollama, set `OLLAMA_BASE_URL` to a reachable, private Ollama host; `127.0.0.1` always refers to the server's own machine. Keep the laptop awake for a local demo. Ollama cloud is not a drop-in for this implementation because its structured-output support differs. Never expose an unauthenticated Ollama port publicly.
+
+Optional tooling: I strongly recommend `npm i -g vercel` if you want agentic Vercel features such as `vercel env pull`, `vercel deploy` and `vercel logs`.
 
 ## Ownership
 

@@ -43,7 +43,7 @@ Guide answers are source excerpts, with `{title, url}` citations. Quests return 
 ## Operational limits / remaining work
 
 - In-memory rate limits reset on restart and are per process; move to shared storage for multiple instances. Anonymous users can create fresh sessions, so this is a hackathon abuse guard rather than a strong identity quota.
-- Need a privately reachable Ollama host for Replit; the local default works only when Express and Ollama share a host.
+- For remote hosting, need a privately reachable Ollama host; the local default works only when Express and Ollama share a host.
 - Need real Supabase credentials, Kartik's helpers/routes and Cal's content before end-to-end photo → database → Realtime can be verified.
-- Need teammates' GitHub handles to invite them, plus Replit account access/import. No invitations or messages have been sent.
+- Need teammates' GitHub handles to invite them. No invitations or messages have been sent. No hosting provider is required for local development.
 - Rejected/malformed photos consume a report attempt. The service never persists image bytes; request bytes exist transiently during inference.
