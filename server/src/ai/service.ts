@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { ApiError, verdictSchema, type PopupStore, type Popup, type Quest, type GuidePage } from './contracts.js';
 import { Ollama } from './ollama.js';
 
-export interface AiDependencies { model: Ollama; store: PopupStore; now?: () => Date }
+export interface AiDependencies { model: Ollama; getStore: () => Promise<PopupStore>; now?: () => Date }
 interface ReportResult { accepted: boolean; reject_reason: string | null; merged_into: string | null; popup: Popup | null }
 
 function distanceMeters(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
@@ -21,16 +21,17 @@ export async function reportPopup(input: { photo: Buffer; lat: number; lng: numb
     'Is this a real pop-up? Describe visible evidence through the JSON fields and design its sticker.', input.photo);
   if (!verdict.accepted) return { accepted: false, reject_reason: verdict.reject_reason || 'No verifiable pop-up is visible.', merged_into: null, popup: null };
   if (!verdict.brand || !verdict.sticker || !verdict.duration_minutes) throw new ApiError(502, 'Ollama returned an incomplete pop-up verdict.');
+  const store = await deps.getStore();
   const now = (deps.now ?? (() => new Date()))();
   const since = new Date(now.getTime() - 2 * 60 * 60_000).toISOString();
-  const nearby = await deps.store.findNearbyPopup({ lat: input.lat, lng: input.lng, withinMeters: 100, since, brand: verdict.brand });
+  const nearby = await store.findNearbyPopup({ lat: input.lat, lng: input.lng, withinMeters: 100, since, brand: verdict.brand });
   if (nearby && nearby.status === 'live' && Date.parse(nearby.expires_at) > now.getTime()
     && Date.parse(nearby.created_at) >= Date.parse(since) && Date.parse(nearby.created_at) <= now.getTime()
     && distanceMeters(input, nearby) <= 100
     && nearby.brand.trim().toLowerCase() === verdict.brand.trim().toLowerCase()) {
     return { accepted: true, reject_reason: null, merged_into: nearby.id, popup: publicPopup(nearby) };
   }
-  const popup = await deps.store.createPopup({
+  const popup = await store.createPopup({
     lat: input.lat, lng: input.lng, brand: verdict.brand, freebies: verdict.freebies,
     sticker: { ...verdict.sticker, source: 'popup', variant: 'special' },
     // Unconfirmed reports fade within 30 minutes; confirmations are Kartik's route.

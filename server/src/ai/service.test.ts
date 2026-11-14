@@ -2,16 +2,18 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { reportPopup, suggestQuests, answerGuide, type AiDependencies } from './service.js';
 import { Ollama } from './ollama.js';
+import type { PopupStore } from './contracts.js';
 
 const now = new Date('2026-11-15T00:00:00Z');
 const verdict = { accepted: true, reject_reason: null, brand: 'Bubble Co.', freebies: ['tote bags'], duration_minutes: 90,
   sticker: { key: 'bubble', name: 'Lathergeist', colors: ['#7FD3F7', '#FFFFFF'], lore: 'Free samples flow.' } };
 const saved = { id: 'p_1', lat: 34.0257, lng: -118.2856, ...verdict, expires_at: '2026-11-15T00:30:00.000Z', confirmations: 1, status: 'live', created_at: now.toISOString() };
 const quest = { id: 'q1', title: 'Essentials', blurb: 'Start here', spot_ids: ['s1', 's2', 's3'], reward_sticker_key: 'star' };
-function deps(output: unknown = verdict): AiDependencies {
+function deps(output: unknown = verdict): AiDependencies & { store: PopupStore } {
+  const store: PopupStore = { findNearbyPopup: async () => null, createPopup: async input => ({ ...input, id: 'p_1' }) };
   return {
     model: new Ollama({ fetch: async () => new Response(JSON.stringify({ message: { content: JSON.stringify(output) } })) }),
-    store: { findNearbyPopup: async () => null, createPopup: async input => ({ ...input, id: 'p_1' }) },
+    store, getStore: async () => store,
     now: () => now,
   };
 }

@@ -46,7 +46,7 @@ export function createAiRouter(overrides: Partial<RouterDependencies> = {}) {
   };
   const requireUser: RequestHandler = async (req, res, next) => {
     const token = /^Bearer (\S+)$/i.exec(req.headers.authorization ?? '')?.[1];
-    if (!token) throw new ApiError(401, 'Sign in anonymously and send your Bearer token.');
+    if (!token) throw new ApiError(401, 'Sign in with your USC email and send your Bearer token.');
     try { res.locals.userId = await deps.authenticate(token); }
     catch (error) { throw error instanceof ApiError ? error : new ApiError(401, 'Invalid or expired session.'); }
     next();
@@ -55,7 +55,7 @@ export function createAiRouter(overrides: Partial<RouterDependencies> = {}) {
     try {
       const position = coordinates.parse(req.body);
       if (!req.file || !isImage(req.file)) throw new ApiError(400, 'Attach a JPEG, PNG or WebP photo as photo.');
-      const result = await reportPopup({ ...position, photo: req.file.buffer, userId: res.locals.userId }, { model: deps.model, store: await deps.getStore() });
+      const result = await reportPopup({ ...position, photo: req.file.buffer, userId: res.locals.userId }, { model: deps.model, getStore: deps.getStore });
       res.json(result);
     } finally {
       // Release the upload; photos are never written to storage or logs.

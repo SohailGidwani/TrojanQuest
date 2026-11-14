@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createAiRouter, aiErrorHandler, type RouterDependencies } from './router.js';
 import { Ollama } from './ollama.js';
+import { ApiError } from './contracts.js';
 
 async function withApi(run: (url: string) => Promise<void>, overrides: Partial<RouterDependencies> = {}) {
   const app = express();
@@ -29,6 +30,30 @@ function photoForm(bytes = Buffer.from([0xff, 0xd8, 0xff, 0xe0])) {
   return body;
 }
 const headers = { Authorization: 'Bearer valid' };
+
+test('non-pop-up photos are rejected even before database helpers are available', async () => {
+  await withApi(async url => {
+    const response = await fetch(`${url}/popups/report`, { method: 'POST', headers, body: photoForm() });
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      accepted: false, reject_reason: 'No pop-up visible.', merged_into: null, popup: null,
+    });
+  }, {
+    getStore: async () => { throw new ApiError(503, 'Database helpers unavailable.'); },
+    model: new Ollama({ fetch: async () => new Response(JSON.stringify({ message: { content: JSON.stringify({
+      accepted: false, reject_reason: 'No pop-up visible.', brand: null,
+      freebies: [], duration_minutes: null, sticker: null,
+    }) } })) }),
+  });
+});
+
+test('accepted photos still require working database helpers', async () => {
+  await withApi(async url => {
+    const response = await fetch(`${url}/popups/report`, { method: 'POST', headers, body: photoForm() });
+    assert.equal(response.status, 503);
+    assert.deepEqual(await response.json(), { error: 'Database helpers unavailable.' });
+  }, { getStore: async () => { throw new ApiError(503, 'Database helpers unavailable.'); } });
+});
 
 test('report requires a verified user before reading photo uploads', async () => {
   await withApi(async url => {

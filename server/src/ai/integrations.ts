@@ -6,10 +6,13 @@ let authClient: SupabaseClient | undefined;
 export async function authenticate(token: string): Promise<string> {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_ANON_KEY;
-  if (!url || !key) throw new ApiError(503, 'Supabase anonymous auth is not configured.');
+  if (!url || !key) throw new ApiError(503, 'Supabase email auth is not configured.');
   authClient ??= createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
   const { data, error } = await authClient.auth.getUser(token);
   if (error || !data.user) throw new ApiError(401, 'Invalid or expired session.');
+  if (data.user.is_anonymous || !data.user.email_confirmed_at || !data.user.email?.toLowerCase().endsWith('@usc.edu')) {
+    throw new ApiError(403, 'Sign in with a verified @usc.edu email.');
+  }
   return data.user.id;
 }
 

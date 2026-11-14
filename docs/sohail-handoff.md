@@ -26,7 +26,7 @@ findNearbyPopup(input: {
 
 The two-helper interface cannot make the read-then-insert atomic across concurrent reports; the DB owner should make creation deduplicate transactionally before a busy public launch. The service currently guarantees sequential report deduplication. If the `reports` table needs per-report verdict records, we need one additional agreed helper; it is not silently implemented in the AI folder.
 
-Provide `shared/types.ts`; Sohail's temporary AI boundary types are in `server/src/ai/contracts.ts`. They don't overwrite the shared contract. No service-role key is used to verify users; Supabase `auth.getUser(token)` checks anonymous sessions with the anon key.
+Provide `shared/types.ts`; Sohail's temporary AI boundary types are in `server/src/ai/contracts.ts`. They don't overwrite the shared contract. No service-role key is used to verify users. `authenticate(token)` in `server/src/ai/integrations.ts` uses Supabase `auth.getUser(token)` and requires a confirmed exact `@usc.edu` email, rejecting anonymous users. Reuse this check for protected backend actions. Enforce the same policy in RLS for direct client database access; the AI guard cannot protect Supabase's Data API. Account creation can be restricted with Supabase's Before User Created domain hook.
 
 ## Cal
 
@@ -36,13 +36,17 @@ Provide `shared/types.ts`; Sohail's temporary AI boundary types are in `server/s
 
 ## Manaswi / Shibhiya
 
-Use relative `/api` URLs and attach the Supabase anonymous access token as a Bearer token, including multipart requests. Let the browser set multipart Content-Type. Display `{ error }` on non-2xx responses. A 200 report response can have `accepted: false`; display `reject_reason`. A merge returns `merged_into` and the existing popup. Don't add a duplicate pin.
+Use relative `/api` URLs and attach the verified USC user's Supabase access token as a Bearer token, including multipart requests. Let the browser set multipart Content-Type. Display `{ error }` on non-2xx responses. A 200 report response can have `accepted: false`; display `reject_reason`. A merge returns `merged_into` and the existing popup. Don't add a duplicate pin.
+
+**Auth plan change:** use USC email OTP, with anonymous auth disabled. Manaswi owns the client implementation. Normalize the email with `trim().toLowerCase()`, validate it as an email with the exact `usc.edu` domain, then call `supabase.auth.signInWithOtp({ email })`. For the entered code, call `supabase.auth.verifyOtp({ email, token, type: 'email' })`; use the returned session or existing Supabase session lifecycle to send Bearer tokens. Handle cooldown, expired/incorrect codes, and API 401/403 responses. Supabase sends/verifies the OTP; no AI or custom auth endpoint is involved. Its OTP length follows project configuration rather than an app-hardcoded assumption.
+
+Supabase dashboard setup: enable Email auth and email confirmation, keep anonymous sign-ins disabled, and put `{{ .Token }}` in the Magic Link email template. Custom SMTP is needed to deliver to arbitrary students outside the project team. No real OTP email has been sent or verified yet.
 
 Guide answers are source excerpts, with `{title, url}` citations. Quests return existing authored objects in suggested order. There is no production mock fallback, auth bypass or paid API dependency.
 
 ## Operational limits / remaining work
 
-- In-memory rate limits reset on restart and are per process; move to shared storage for multiple instances. Anonymous users can create fresh sessions, so this is a hackathon abuse guard rather than a strong identity quota.
+- In-memory rate limits reset on restart and are per process; move to shared storage for multiple instances. Limits currently apply per verified USC account.
 - For remote hosting, need a privately reachable Ollama host; the local default works only when Express and Ollama share a host.
 - Need real Supabase credentials, Kartik's helpers/routes and Cal's content before end-to-end photo → database → Realtime can be verified.
 - Need teammates' GitHub handles to invite them. No invitations or messages have been sent. No hosting provider is required for local development.
