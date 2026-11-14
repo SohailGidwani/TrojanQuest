@@ -2,6 +2,8 @@
 
 Based on TrojanQuest Team Build Plan, November 14, 2026.
 
+Current priority: sign-in is deferred. `npm run dev:demo` runs a loopback-only AI workbench with real Ollama inference and temporary in-memory pins while teammates build data/content/frontend. Authenticated mode remains available for later integration.
+
 1. Scaffold React/Vite and Express/TypeScript, root scripts and env example, with no hosting provider requirement.
 2. Test then implement multipart photo reporting: verified USC email identity, bounded image uploads, vision verdict validation, eight sticker keys, 100 m/two-hour duplicate merge, three reports/hour and memory-only photos. Supabase email OTP replaces the original anonymous-auth plan.
 3. Test then implement quest ordering restricted to Cal's quests and guide answers restricted to Cal's saved USC sources, with validated citations.

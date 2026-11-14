@@ -5,7 +5,7 @@ import { Ollama } from './ollama.js';
 export interface AiDependencies { model: Ollama; getStore: () => Promise<PopupStore>; now?: () => Date }
 interface ReportResult { accepted: boolean; reject_reason: string | null; merged_into: string | null; popup: Popup | null }
 
-function distanceMeters(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
+export function distanceMeters(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
   const rad = Math.PI / 180;
   const h = Math.sin((b.lat - a.lat) * rad / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin((b.lng - a.lng) * rad / 2) ** 2;
   return 6_371_000 * 2 * Math.asin(Math.sqrt(Math.min(1, h)));

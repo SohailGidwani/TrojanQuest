@@ -1,5 +1,11 @@
 # Sohail → team integration handoff
 
+## Current priority: sign-in deferred
+
+Use `npm run dev:demo` and open http://127.0.0.1:5173/dev/ai to exercise the real AI report route without OTP or Supabase. This explicit development mode uses a single `local-demo` identity and an in-memory popup store. Pins expire on read and reset on restart. Normal operation still requires USC sessions. Demo mode binds both servers to loopback and refuses non-development startup.
+
+`/dev/ai/popups` is a local workbench endpoint, not a replacement for the agreed Supabase Realtime contract. Kartik's database router is not mounted in this mode. Cal's real content remains required for quest/guide requests; there are no invented USC facts or production content substitutes. Product frontend owners can use the no-login AI endpoints while running this local mode, and reconnect real auth/data when ready.
+
 ## Kartik
 
 AI code imports no SQL and does not modify your folders. Provide:
@@ -40,7 +46,7 @@ Use relative `/api` URLs and attach the verified USC user's Supabase access toke
 
 **Auth plan change:** use USC email OTP, with anonymous auth disabled. Manaswi owns the client implementation. Normalize the email with `trim().toLowerCase()`, validate it as an email with the exact `usc.edu` domain, then call `supabase.auth.signInWithOtp({ email })`. For the entered code, call `supabase.auth.verifyOtp({ email, token, type: 'email' })`; use the returned session or existing Supabase session lifecycle to send Bearer tokens. Handle cooldown, expired/incorrect codes, and API 401/403 responses. Supabase sends/verifies the OTP; no AI or custom auth endpoint is involved. Its OTP length follows project configuration rather than an app-hardcoded assumption.
 
-Supabase dashboard setup: enable Email auth and email confirmation, keep anonymous sign-ins disabled, and put `{{ .Token }}` in the Magic Link email template. Custom SMTP is needed to deliver to arbitrary students outside the project team. No real OTP email has been sent or verified yet.
+Deferred Supabase dashboard setup: enable Email auth and email confirmation, keep anonymous sign-ins disabled, and put `{{ .Token }}` in both signup and Magic Link email templates. Custom SMTP is required to edit the templates and deliver to arbitrary students outside the project team. OTP verification remains untested; setup is paused.
 
 Guide answers are source excerpts, with `{title, url}` citations. Quests return existing authored objects in suggested order. There is no production mock fallback, auth bypass or paid API dependency.
 

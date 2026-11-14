@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TrojanQuest · AI workbench</title>
+<link rel="icon" href="data:,">
+<style>
+:root{font-family:"Avenir Next",Avenir,system-ui,sans-serif;color:#182535;background:#f2f5fa;font-synthesis:none;--red:#8c1027;--gold:#f3bc35}
+*{box-sizing:border-box}body{margin:0}header{background:var(--red);color:white;padding:34px max(22px,calc((100vw - 1120px)/2)) 38px}header p{max-width:65ch;color:#f4dfe3;line-height:1.6;margin-bottom:0}h1{font-size:clamp(30px,5vw,48px);letter-spacing:-1.8px;margin:12px 0 4px;line-height:1.15}h2{font-size:22px;margin:0 0 12px;letter-spacing:-.5px}h3{margin:0 0 8px;font-size:18px}p{line-height:1.6}.badge{display:inline-block;color:#241b02;background:var(--gold);padding:5px 12px;border-radius:30px;font-size:13px;font-weight:700}main{max-width:1164px;padding:28px 22px 60px;margin:auto}.layout{display:grid;grid-template-columns:1.15fr 1fr;gap:24px}.panel{background:white;padding:26px;border-radius:14px;border:1px solid #dbe2ed}.panel>p{color:#536174;margin-top:0}label{display:block;font-weight:600;font-size:14px;margin:18px 0 7px}input,textarea{font:inherit;width:100%;border:1px solid #a9b6c9;border-radius:7px;padding:11px 12px;background:white;color:inherit}input[type=file]{padding:14px;font-size:14px}textarea{min-height:94px;resize:vertical}.coordinates{display:grid;grid-template-columns:1fr 1fr;gap:14px}button{font:inherit;font-weight:650;cursor:pointer;border:0;border-radius:7px;background:var(--red);color:white;padding:12px 18px;margin-top:18px}button.secondary{color:var(--red);background:#f7eaf0}button:disabled{opacity:.55;cursor:wait}button:focus-visible,input:focus-visible,textarea:focus-visible,summary:focus-visible{outline:3px solid #3877c9;outline-offset:3px}.help{font-size:13px;color:#536174}.status{margin-top:16px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}.status[data-error=true]{color:#a01230}.preview{padding:22px 0}.sticker{width:174px;min-height:174px;padding:24px 16px;display:grid;place-items:center;text-align:center;border:7px solid white;outline:2px solid #dbe2ed;border-radius:42px;box-shadow:0 5px 0 #dbe2ed;background:var(--sticker-bg,#f3bc35);color:#162638;font-size:22px;font-weight:800;transform:rotate(-5deg);margin:8px 0 26px;overflow-wrap:anywhere}ul{padding-left:20px;line-height:1.7}pre{padding:16px;background:#f2f5fa;font-size:12px;white-space:pre-wrap;overflow-wrap:anywhere;border-radius:7px;max-height:300px;overflow:auto}summary{cursor:pointer;font-size:14px}.pin{padding:16px 0;border-top:1px solid #dbe2ed}.pin strong{display:block}.pin small{color:#536174}details.panel{margin-top:24px}.extras{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:24px}.empty{color:#536174;font-size:14px}.result{white-space:pre-wrap;line-height:1.7}.result a{color:var(--red)}[hidden]{display:none!important}@media(max-width:700px){.layout,.extras{grid-template-columns:1fr}.panel{padding:22px}header{padding-top:25px}main{padding-top:22px}}
+</style>
+</head>
+<body>
+<header><span class="badge">Local demo · Sign-in paused</span><h1>TrojanQuest AI workbench</h1><p>Turn a campus pop-up photo into a sticker with Ollama. Pins stay in this server's memory and disappear when it restarts. This page tests Sohail's AI routes while the product screens are being built.</p></header>
+<main>
+<div class="layout">
+<section class="panel"><h2>Photo to sticker</h2><p>Try a giveaway booth, free samples, or a temporary campus stall. An unrelated photo should be rejected.</p>
+<form id="report">
+<label for="photo">Pop-up photo</label><input id="photo" name="photo" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" required aria-describedby="photo-help"><p id="photo-help" class="help">JPEG, PNG or WebP, up to 5 MB. Photos are not saved.</p>
+<div class="coordinates"><div><label for="lat">Latitude</label><input id="lat" name="lat" type="number" min="-90" max="90" step="any" value="34.0257" required></div><div><label for="lng">Longitude</label><input id="lng" name="lng" type="number" min="-180" max="180" step="any" value="-118.2856" required></div></div>
+<button class="secondary" id="locate" type="button">Use my location</button> <button type="submit">Generate sticker</button>
+<p class="help">The default pin is at USC Village. Matching-brand reports within 100 m and two hours merge. Three report attempts per hour; restart the demo server to reset.</p>
+<div class="status" role="status" aria-live="polite"></div><div id="sticker-preview" class="preview" hidden></div><details id="report-details" hidden><summary>API response</summary><pre></pre></details>
+</form></section>
+<section class="panel"><h2>Live demo pins</h2><p>Accepted photos appear here. Expired pins drop out automatically. These pins don't go to Supabase or other phones yet.</p><div id="pins"><p class="empty">Report a pop-up to create your first pin.</p></div><button type="button" class="secondary" id="refresh">Refresh pins</button><p id="pin-status" class="help" role="status"></p></section>
+</div>
+<div class="extras">
+<section class="panel"><h2>Quest suggestions</h2><p>Ranks the authored quests in Cal's <code>content/quests.json</code>. Add that file to test this flow.</p><form id="quests"><label for="interests">Your interests</label><textarea id="interests" required maxlength="1000" placeholder="CS freshman who studies late"></textarea><button type="submit">Suggest quests</button><div class="status" role="status" aria-live="polite"></div><div class="result"></div></form></section>
+<section class="panel"><h2>Campus guide</h2><p>Answers with verified excerpts from Cal's saved USC pages in <code>content/guide-pages</code>.</p><form id="guide"><label for="question">Campus question</label><textarea id="question" required maxlength="1000" placeholder="Where can I find student health resources?"></textarea><button type="submit">Ask the guide</button><div class="status" role="status" aria-live="polite"></div><div class="result"></div></form></section>
+</div>
+</main>
+<script>
+const $=selector=>document.querySelector(selector);
+function element(tag,text){const node=document.createElement(tag);node.textContent=text;return node;}
+async function post(form,path,body){
+  const status=form.querySelector('.status'),button=form.querySelector('button[type=submit]');
+  status.dataset.error='false';status.textContent='Working with local Ollama… First requests can take a minute.';button.disabled=true;
+  try{
+    const response=await fetch(path,{method:'POST',...(body instanceof FormData?{}:{headers:{'Content-Type':'application/json'}}),body:body instanceof FormData?body:JSON.stringify(body),signal:AbortSignal.timeout(150000)});
+    const result=await response.json();if(!response.ok)throw new Error(result.error||'The request failed.');
+    status.textContent='';return result;
+  }catch(error){status.dataset.error='true';status.textContent=error.name==='TimeoutError'?'Ollama took too long. Check the model is running and try again.':error.message;return null;}
+  finally{button.disabled=false;}
+}
+$('#locate').onclick=()=>{
+  const status=$('#report .status');
+  if(!navigator.geolocation){status.textContent='Location is unavailable. Enter coordinates above.';return;}
+  navigator.geolocation.getCurrentPosition(position=>{$('#lat').value=position.coords.latitude;$('#lng').value=position.coords.longitude;status.textContent='Using your current position for this report.';},()=>{status.textContent='Location access failed. You can use the default pin or enter coordinates.';},{timeout:10000,maximumAge:60000});
+};
+let pins=[];
+function renderPins(){
+  const nodes=pins.filter(pin=>Date.parse(pin.expires_at)>Date.now()).map(pin=>{
+    const div=element('div','');div.className='pin';
+    div.append(element('strong',pin.sticker.name),element('div',pin.brand),element('small',`${Math.max(1,Math.ceil((Date.parse(pin.expires_at)-Date.now())/60000))} min left · ${pin.lat.toFixed(4)}, ${pin.lng.toFixed(4)}`));return div;
+  });$('#pins').replaceChildren(...(nodes.length?nodes:[element('p','No live pins yet. Report a pop-up above.')]));
+}
+async function refreshPins(){try{const response=await fetch('/dev/ai/popups');if(!response.ok)throw new Error();pins=await response.json();renderPins();$('#pin-status').textContent='';}catch{$('#pin-status').textContent='Could not load demo pins. Check that npm run dev:demo is running.';}}
+$('#refresh').onclick=refreshPins;refreshPins();setInterval(renderPins,1000);
+$('#report').onsubmit=async event=>{
+  event.preventDefault();$('#sticker-preview').hidden=true;$('#report-details').hidden=true;
+  if($('#photo').files[0]?.size>5*1024*1024){$('#report .status').textContent='Choose a photo of 5 MB or smaller.';return;}
+  const result=await post(event.target,'/api/popups/report',new FormData(event.target));if(!result)return;
+  $('#report-details').hidden=false;$('#report-details pre').textContent=JSON.stringify(result,null,2);
+  $('#report .status').textContent=result.accepted?(result.merged_into?'Merged with the existing pop-up.':'Sticker created. Your demo pin is live.'):result.reject_reason;
+  if(result.accepted){const preview=$('#sticker-preview'),sticker=element('div',result.popup.sticker.name);sticker.className='sticker';sticker.style.setProperty('--sticker-bg',result.popup.sticker.colors[0]);preview.replaceChildren(sticker,element('h3',result.popup.brand),element('p',result.popup.sticker.lore),element('p',result.popup.freebies.join(', ')||'No specific freebies identified.'));preview.hidden=false;await refreshPins();}
+};
+$('#quests').onsubmit=async event=>{
+  event.preventDefault();const output=event.target.querySelector('.result');output.replaceChildren();
+  const result=await post(event.target,'/api/quests/suggest',{interests:$('#interests').value});if(!result)return;
+  for(const quest of result)output.append(element('h3',quest.title),element('p',quest.blurb));
+};
+$('#guide').onsubmit=async event=>{
+  event.preventDefault();const output=event.target.querySelector('.result');output.replaceChildren();
+  const result=await post(event.target,'/api/guide/ask',{question:$('#question').value});if(!result)return;
+  output.append(element('p',result.answer));for(const source of result.citations){const paragraph=element('p',''),link=element('a',source.title);link.href=source.url;link.target='_blank';link.rel='noopener noreferrer';paragraph.append(link);output.append(paragraph);}
+};
+</script>
+</body>
+</html>

@@ -10,6 +10,7 @@ import { Ollama } from './ollama.js';
 import { answerGuide, reportPopup, suggestQuests } from './service.js';
 
 export interface RouterDependencies {
+  demoMode: boolean;
   authenticate: (token: string) => Promise<string>;
   getStore: () => Promise<PopupStore>;
   model: Ollama;
@@ -28,7 +29,7 @@ function isImage(file: Express.Multer.File) {
 }
 
 export function createAiRouter(overrides: Partial<RouterDependencies> = {}) {
-  const deps: RouterDependencies = { authenticate, getStore, model: new Ollama(), contentDirectory: defaultContent, guideDirectory: join(overrides.contentDirectory ?? defaultContent, 'guide-pages'), ...overrides };
+  const deps: RouterDependencies = { demoMode: false, authenticate, getStore, model: new Ollama(), contentDirectory: defaultContent, guideDirectory: join(overrides.contentDirectory ?? defaultContent, 'guide-pages'), ...overrides };
   const router = Router();
   // shortcut: limits reset on restart and apply to one server; move to shared storage when scaling.
   const attempts = new Map<string, { count: number; until: number }>();
@@ -45,6 +46,7 @@ export function createAiRouter(overrides: Partial<RouterDependencies> = {}) {
     next();
   };
   const requireUser: RequestHandler = async (req, res, next) => {
+    if (deps.demoMode) { res.locals.userId = 'local-demo'; next(); return; }
     const token = /^Bearer (\S+)$/i.exec(req.headers.authorization ?? '')?.[1];
     if (!token) throw new ApiError(401, 'Sign in with your USC email and send your Bearer token.');
     try { res.locals.userId = await deps.authenticate(token); }

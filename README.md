@@ -2,6 +2,20 @@
 
 Collect stickers, discover USC, meet other Trojans. Built with React/Vite, Express/TypeScript, Supabase and local Ollama.
 
+## Work without sign-in
+
+Sign-in/SMTP setup is paused. To test Sohail's AI features locally:
+
+```sh
+npm ci
+ollama pull qwen3-vl:4b-instruct
+npm run dev:demo
+```
+
+Keep Ollama running, then open http://127.0.0.1:5173/dev/ai. Upload a pop-up photo to generate a sticker and temporary pin; report it again to test merging, or try an unrelated photo to test rejection. The workbench also calls the quest and guide routes once Cal's content is present. This is an AI integration tool, not the team's product frontend.
+
+Demo mode uses real Ollama inference and an isolated in-memory popup store, requires no Supabase credentials, and shares one local demo identity. Pins and hourly limits reset when the server restarts. It bypasses sign-in only with `DEMO_MODE=true` and `NODE_ENV=development`; both dev servers bind to loopback. Demo mode refuses to start outside development and does not mount Kartik's production database routes. The regular `npm run dev` keeps the USC session checks.
+
 ## Run locally
 
 Requires Node 22.12+ and Ollama 0.12.7+.
@@ -36,7 +50,7 @@ After building, Express serves the client at http://localhost:3001. The client i
 
 Missing credentials, database helpers or content produce explicit errors rather than fake results. See [team integration handoff](docs/sohail-handoff.md).
 
-## Supabase setup
+## Supabase setup (deferred)
 
 Put the project's URL and publishable (or legacy anon) key in your local `.env`:
 
@@ -47,7 +61,7 @@ VITE_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
 VITE_SUPABASE_ANON_KEY=YOUR_PUBLISHABLE_OR_ANON_KEY
 ```
 
-Keep anonymous sign-ins disabled. Enable the Email provider and email confirmation in Supabase Auth. In Email Templates → Magic Link, include `{{ .Token }}` so the message contains an OTP code. The frontend uses Supabase's built-in `signInWithOtp({ email })`, then `verifyOtp({ email, token, type: 'email' })`; no custom OTP server or USC SSO is required. Use an exact `@usc.edu` address. [Email OTP setup](https://supabase.com/docs/guides/auth/auth-email-passwordless).
+Keep anonymous sign-ins disabled. Enable the Email provider and email confirmation in Supabase Auth. Once custom SMTP is configured to unlock template editing, include `{{ .Token }}` in both Confirm signup and Magic Link templates so the message contains an OTP code. The frontend uses Supabase's built-in `signInWithOtp({ email })`, then `verifyOtp({ email, token, type: 'email' })`; no custom OTP server or USC SSO is required. Use an exact `@usc.edu` address. [Email OTP setup](https://supabase.com/docs/guides/auth/auth-email-passwordless).
 
 AI routes validate sessions through Supabase and reject anonymous users, unverified email, and addresses outside `@usc.edu`. No database password or service-role key is needed by this auth code. Kartik owns migrations, USC-aware row-level security policies, database helpers and Realtime publication for `popups`; those are still needed for persisted live pins. To restrict account creation in Supabase itself, configure a [Before User Created domain hook](https://supabase.com/docs/guides/auth/auth-hooks/before-user-created-hook). The API checks alone do not restrict direct database access.
 
