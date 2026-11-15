@@ -3,8 +3,20 @@ export type Category = 'study' | 'eat' | 'hangout' | 'chill' | 'essentials';
 export type Variant = 'morning' | 'day' | 'night' | 'seasonal' | 'special';
 export type Source = 'spot' | 'popup' | 'org' | 'quest';
 export type PopupStickerKey = 'bubble' | 'star' | 'book' | 'bowl' | 'leaf' | 'bolt' | 'heart' | 'flag';
+export type Rarity = 'common' | 'rare' | 'epic' | 'legendary' | 'exclusive';
+export interface StickerDefinition {
+  key: string;
+  name: string;
+  rarity: Rarity;
+  tags: string[];
+  image?: string;
+  art?: string;
+  lore?: string;
+  available_from?: string;
+  available_until?: string;
+}
 
-export interface Sticker {
+export interface Sticker extends Partial<StickerDefinition> {
   key: string;
   name: string;
   source: Source;
