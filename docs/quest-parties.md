@@ -1,17 +1,10 @@
 # Quest parties: backend spec
 
-**Completion update (Nov 15):** migration 007 and `POST /api/quests/:id/complete` now implement the
-trusted own-visit completion writer. The existing party trigger still owns the saved one-time reward roll.
-Migration 008 extends acceptance and expiry checks to 1–8-stop challenges. These new migrations await hosted
-application; live client wiring is still required. See [the backend handoff](challenges-backend-handoff.md).
+**Current status (2026-11-15):** migrations 006–009 are applied on the team's hosted Supabase project. The live client loads persisted acceptances and incoming invitations, sends invite/join/remove actions, and requests own-visit-verified completion through `POST /api/quests/:id/complete`. The server trigger freezes party size and saves the one-time reward roll; the client refreshes catches rather than rolling locally. Explicit demo mode retains separate local simulation.
 
-**For:** Kartik (shared types, database, routes), with Sohail for the route wiring.
-**Status:** demo UI and live backend are implemented. Apply migration `202611150006_quest_parties.sql` for the five authenticated routes below. Live client wiring is still pending; the client hides Invite outside the demo (`partiesAvailable`). Authoritative quest completion is still deferred, so there is no live reward claim endpoint.
+**For:** Kartik (shared types, database, routes), with frontend/AI integration completed under the user's subsequent end-to-end authorisation.
 
-**Hosted setup (November 15):** migration 006 is applied and recorded on the
-team's TrojanQuest Supabase project. Read-only checks confirmed the reward
-columns, rejection of unverified RPC actors, and denial of public party reads.
-Other environments must apply it before running this backend version.
+See [the completed integration and its validation limits](live-integration-20261115.md). Other environments must apply the migrations and private configuration; database rollout is separate from a hosted application release.
 
 ## The feature
 
