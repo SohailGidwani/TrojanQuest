@@ -42,3 +42,13 @@ export const nearbyPopupSchema = positionSchema.extend({
   since: z.iso.datetime({ offset: true }),
   brand: z.string().trim().min(1).max(80),
 });
+
+export const catchRequestSchema = positionSchema.extend({
+  source: z.enum(['spot', 'popup', 'org', 'quest']),
+  source_id: id,
+}).strict().superRefine((value, ctx) => {
+  if (value.source === 'popup' && !z.uuid().safeParse(value.source_id).success) {
+    ctx.addIssue({ code: 'custom', path: ['source_id'], message: 'Pop-up ID must be a UUID.' });
+  }
+});
+export const confirmRequestSchema = positionSchema.strict();

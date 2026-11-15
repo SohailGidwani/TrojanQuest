@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { checkCollection } from './test-collection.mjs';
 
 // Optional test dependency, kept outside the team's application lockfile.
 // Pass a module path when PGlite is installed in a separate tooling directory.
@@ -56,6 +57,8 @@ try {
   await assert.rejects(db.query('select public.create_popup($1::jsonb)',[JSON.stringify({...input,reporter_id:outside})]),/Verified USC/);
   console.log('PASS: real RPC creation, normalized-brand deduplication, distance, private report and expiry cap');
   await db.exec('reset role');
+  // Apply the upgrade after a pre-existing report to check reporter backfill too.
+  await db.exec(await readFile(new URL('../supabase/migrations/202611140002_collection_and_confirmation.sql', import.meta.url), 'utf8'));
   await db.query(`insert into public.popups(lat,lng,brand,sticker,created_at,expires_at) values
     (34,-118,'Old',$1::jsonb,now()-interval '3 hours',now()+interval '1 hour'),
     (34,-118,'Expired',$1::jsonb,now()-interval '1 hour',now()-interval '1 minute')`,[JSON.stringify(input.sticker)]);
@@ -86,4 +89,5 @@ try {
   const published = (await db.query(`select tablename from pg_publication_tables where pubname='supabase_realtime'`)).rows;
   assert.deepEqual(published,[{tablename:'popups'}]);
   console.log('PASS: outsiders, unverified and anonymous accounts denied; Realtime publishes only popups');
+  await checkCollection(db, { a, b, outside, unverified, anonymous, popupId: created.id, input });
 } finally { await db.close(); }
