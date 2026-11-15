@@ -4,7 +4,7 @@ import { addDemoVisit, parseDemoState } from './collection'
 import { demoFriendBooks, demoFriends, demoQuests, demoSpots, initialDemoState } from './mock'
 import { requestJSON, RequestError } from './api'
 
-const storageKey = 'trojanquest:collection-demo:v1'
+const storageKey = 'trojanquest:collection-demo:v2'
 function readDemo() { try { return parseDemoState(localStorage.getItem(storageKey)) ?? initialDemoState } catch { return initialDemoState } }
 interface RemoteData { spots: Spot[]; catches: Catch[]; quests: Quest[]; friends: Friend[] }
 const empty: RemoteData = { spots: [], catches: [], quests: [], friends: [] }

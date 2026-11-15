@@ -1,8 +1,13 @@
 import type { Catch, Category, DemoState, Friend, Quest, Spot } from './types'
 import { addDemoVisit } from './collection'
 
-// Bovard pin: USC venue listing https://calendar.usc.edu/bovard_auditorium_adm (geo metadata).
-// shortcut: other preview coordinates are illustrative; replace them with Cal's verified catalogue.
+// Hunt pins: USC's Bovard venue listing and OpenStreetMap; sources in docs/hunt-plan.md.
+// shortcut: places outside the authored trails still use illustrative preview coordinates.
+const huntPins: Record<string, [number, number]> = {
+  bovard: [34.020914, -118.285537], leavey: [34.021773, -118.282881],
+  doheny: [34.020197, -118.283725], alumni: [34.020638, -118.284520],
+  mccarthy: [34.020940, -118.283150],
+}
 const places: [string, string, Category, string][] = [
   ['leavey', 'Leavey Library', 'study', 'book'], ['doheny', 'Doheny Library', 'study', 'book'], ['philosophy', 'Philosophy Library', 'study', 'star'],
   ['village', 'USC Village', 'eat', 'bowl'], ['campus-center', 'Tutor Campus Center', 'eat', 'bubble'], ['mccarthy', 'McCarthy Quad', 'hangout', 'flag'],
@@ -11,7 +16,7 @@ const places: [string, string, Category, string][] = [
   ['tutoring', 'Tutoring Resources', 'essentials', 'book'], ['fertitta', 'Fertitta Hall', 'study', 'bolt'], ['tutor', 'Ronald Tutor Hall', 'hangout', 'star'],
 ]
 export const demoSpots: Spot[] = places.map(([id, name, category, sticker_key]) => ({
-  id, name, category, sticker_key, lat: id === 'bovard' ? 34.020914 : 34.0257, lng: id === 'bovard' ? -118.285537 : -118.2856,
+  id, name, category, sticker_key, lat: huntPins[id]?.[0] ?? 34.0257, lng: huntPins[id]?.[1] ?? -118.2856,
   card_text: 'A new corner of campus for your collection. This is a sample card; verified details and opening hours will come with the campus catalogue.',
   tip: 'Come back in the morning, afternoon, or evening to collect a different time-of-day edition.',
 }))
@@ -32,6 +37,4 @@ function catchesFor(ids: string[]): Catch[] {
 export const demoFriendBooks: Record<string, Catch[]> = {
   maya: catchesFor(demoSpots.map(s => s.id)), rina: catchesFor(['leavey', 'doheny', 'village', 'alumni', 'career', 'cultural', 'tutor', 'mccarthy']), leo: catchesFor(['health', 'career', 'cultural', 'bovard']),
 }
-let initial: DemoState = { catches: [], friendIds: ['maya'] }
-for (const id of ['leavey', 'doheny', 'village', 'campus-center', 'mccarthy', 'health']) initial = addDemoVisit(initial, id, 'day', demoSpots, demoQuests, '2026-11-14T19:00:00Z')
-export const initialDemoState = addDemoVisit(initial, 'leavey', 'night', demoSpots, demoQuests, '2026-11-15T01:00:00Z')
+export const initialDemoState: DemoState = { catches: [], friendIds: ['maya'] }
