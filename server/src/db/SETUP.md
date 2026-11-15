@@ -222,9 +222,35 @@ artwork or other extra fields; the server selects identity and reward details.
   granted while ordering/photo-proof decisions are open. The demo frontend's
   illustrative quest rewards do not grant real catches.
 
-After a successful catch, refresh `/api/me/catches` to update the sticker book.
-The frontend's demo visit picker does not invoke this real endpoint; the final
-GPS/map flow should call it with a verified session.
+The live GPS hunt calls this endpoint with the current session token, then reads
+`/api/me/catches` and confirms the awarded place/variant is present before showing
+the celebration or unlocking the next trail. A failed readback reports that the
+catch was saved and offers a reload; duplicate retries remain safe. The demo
+visit picker never invokes the real endpoint.
+
+### Live hunt integration
+
+Vite reads the root `.env` and exposes only its default `VITE_` variables. Set
+`VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` to the project's public values.
+Keep `SUPABASE_SERVICE_ROLE_KEY` server-only; never prefix it with `VITE_`.
+
+`CollectionApp` restores an existing Supabase session, tracks refresh/sign-out,
+and resets account-scoped screens when the token changes. The final app shell
+can still supply `accessToken` and `profile` props. This adds no sign-in UI,
+email delivery, fake verified accounts or authentication bypass.
+
+- `npm run dev:demo`: explicit sample data/browser-only progress and simulated
+  walks; no live database writes.
+- `npm run dev`: authenticated data routes. Without an existing session, the
+  app explains that sign-in is paused. Required places/catches failures block
+  the hunt; unavailable optional quests/friends do not block Bovard.
+
+To finish the real-device acceptance test once sign-in is available, use a real
+verified USC account, collect Bovard using an accurate GPS fix within 50 m, and
+refresh. Verify the same edition remains in the book without a duplicate. Check
+that a second account cannot see it and that sign-out clears the first account's
+screens. The automated client tests cover request/readback/session behavior with
+fixtures; they do not prove a hosted authenticated catch or physical GPS visit.
 
 ### Confirm a pop-up
 
