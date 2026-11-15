@@ -5,6 +5,7 @@ import { Icon } from './Icon'
 import { stickerCatalogue } from './catalogue'
 import { rarityLabels } from './stickers'
 import type { Rarity } from './stickers'
+import { mixHex, normalizePalette } from './customQuests'
 declare const __STICKER_ASSETS__: string[]
 
 type Paint = { base: string; shade: string; light: string; line: string; accent: string }
@@ -44,7 +45,7 @@ function RarityRing({ rarity, holoId }: { rarity: Rarity; holoId: string }) {
   if (rarity === 'rare') return <g><circle cx="64" cy="64" r="49.5" fill="none" stroke="#2f73d9" strokeWidth="3.5"/><path d={sparkle(108, 29, 7)} fill="#2f73d9"/></g>
   if (rarity === 'epic') return <g><defs><linearGradient id={holoId} x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#ff9ad5"/><stop offset=".3" stopColor="#8447d6"/><stop offset=".55" stopColor="#5ec8f0"/><stop offset=".8" stopColor="#b8f28c"/><stop offset="1" stopColor="#ffd86b"/></linearGradient></defs><circle cx="64" cy="64" r="49.5" fill="none" stroke={`url(#${holoId})`} strokeWidth="5"/><path d={sparkle(110, 28, 8)} fill="#8447d6"/><path d={sparkle(16, 106, 6.5)} fill="#5ec8f0"/></g>
   if (rarity === 'legendary') return <g><circle cx="64" cy="64" r="50" fill="none" stroke="#c98a10" strokeWidth="5"/><circle cx="64" cy="64" r="46" fill="none" stroke="#ffe27a" strokeWidth="2"/><path d={sparkle(64, 14, 10)} fill="#ffcc00" stroke="#c98a10" strokeWidth="1.5"/><path d={sparkle(112, 61, 7)} fill="#ffcc00"/><path d={sparkle(14, 61, 7)} fill="#ffcc00"/></g>
-  if (rarity === 'exclusive') return <g><circle cx="64" cy="64" r="49.5" fill="none" stroke="#c21f5b" strokeWidth="4"/><path d="M20 98h88l-7 8 7 8H20l7-8Z" fill="#c21f5b"/><text x="64" y="109.5" textAnchor="middle" fontFamily="Nunito, system-ui, sans-serif" fontSize="9" fontWeight="900" letterSpacing="1.5" fill="#fff">LIMITED</text></g>
+  if (rarity === 'exclusive') return <g><circle cx="64" cy="64" r="49.5" fill="none" stroke="#c21f5b" strokeWidth="4"/><path d="M20 98h88l-7 8 7 8H20l7-8Z" fill="#c21f5b"/><text x="64" y="109.5" textAnchor="middle" fontFamily="'DM Sans', system-ui, sans-serif" fontSize="9" fontWeight="900" letterSpacing="1.5" fill="#fff">LIMITED</text></g>
   return null
 }
 
@@ -55,14 +56,22 @@ function assetFor(stickerKey: string, image: string | undefined, variant: Varian
   if (__STICKER_ASSETS__.includes(variantAsset)) return { asset: variantAsset, isEdition: true }
   return { asset: __STICKER_ASSETS__.includes(base) ? base : null, isEdition: false }
 }
-/** `rarity` overrides the catalogue rarity, e.g. for a quest reward upgraded by a party bonus. */
-export function StickerImage({ stickerKey, name, variant = 'day', locked = false, size = 112, rarity: rarityOverride }: { stickerKey: string; name: string; variant?: Variant; locked?: boolean; size?: number; rarity?: Rarity }) {
+// A custom palette (background, highlight, outline) replaces the edition colors.
+function customPaint(colors: string[] | undefined): Paint | null {
+  const palette = colors ? normalizePalette(colors) : undefined
+  if (!palette) return null
+  const [base, light, line] = palette
+  return { base, light, line, shade: mixHex(base, line, .25), accent: mixHex(base, light, .45) }
+}
+/** `rarity` overrides the catalogue rarity (e.g. a party upgrade); `colors` previews an AI palette before the sticker is saved. */
+export function StickerImage({ stickerKey, name, variant = 'day', locked = false, size = 112, rarity: rarityOverride, colors }: { stickerKey: string; name: string; variant?: Variant; locked?: boolean; size?: number; rarity?: Rarity; colors?: string[] }) {
   const [broken, setBroken] = useState<string | null>(null)
   const holoId = `holo-${useId().replace(/:/g, '')}`
   const listed = stickerCatalogue.get(stickerKey)
-  const sticker = listed && rarityOverride ? { ...listed, rarity: rarityOverride } : listed
+  // With an override, unlisted keys (an art name, e.g. a design being previewed) still get their rarity ring.
+  const sticker = rarityOverride ? { ...(listed ?? { key: stickerKey, name, art: stickerKey, tags: [] }), rarity: rarityOverride } : listed
   const { asset, isEdition } = assetFor(stickerKey, sticker?.image, variant)
-  const c = palettes[variant] ?? palettes.day
+  const c = customPaint(colors ?? sticker?.colors) ?? palettes[variant] ?? palettes.day
   const style = { width: size, height: size } as CSSProperties
   const rarity = sticker ? `, ${rarityLabels[sticker.rarity].toLowerCase()}` : ''
   return <span className={`sticker-image variant-${variant}${sticker ? ` rarity-${sticker.rarity}` : ''}${locked ? ' is-locked' : ''}`} style={style} role="img" aria-label={`${name}, ${variant} edition${rarity}${locked ? ', locked' : ''}`}>

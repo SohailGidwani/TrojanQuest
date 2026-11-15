@@ -7,7 +7,7 @@ import { ApiError, type PopupStore } from './contracts.js';
 import { authenticate, getStore } from './integrations.js';
 import { loadGuidePages, loadQuests } from './content.js';
 import { Ollama } from './ollama.js';
-import { answerGuide, reportPopup, suggestQuests } from './service.js';
+import { answerGuide, designSticker, reportPopup, suggestQuests } from './service.js';
 
 export interface RouterDependencies {
   demoMode: boolean;
@@ -70,6 +70,13 @@ export function createAiRouter(overrides: Partial<RouterDependencies> = {}) {
   router.post('/quests/suggest', requireUser, limit('quest', 30), express.json({ limit: '8kb' }), async (req, res) => {
     const { interests } = z.object({ interests: z.string().trim().min(1).max(1000) }).parse(req.body);
     res.json(await suggestQuests(interests, await loadQuests(deps.contentDirectory), deps.model));
+  });
+  router.post('/stickers/design', requireUser, limit('sticker', 20), express.json({ limit: '4kb' }), async (req, res) => {
+    const input = z.object({
+      prompt: z.string().trim().min(3).max(300), role: z.enum(['reward', 'stop']),
+      quest_title: z.string().trim().max(60).optional(), stop_name: z.string().trim().max(60).optional(),
+    }).parse(req.body);
+    res.json(await designSticker(input, deps.model));
   });
   router.post('/guide/ask', requireUser, limit('guide', 30), express.json({ limit: '8kb' }), async (req, res) => {
     const { question } = z.object({ question: z.string().trim().min(1).max(1000) }).parse(req.body);

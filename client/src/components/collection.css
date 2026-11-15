@@ -923,7 +923,7 @@ img {
   color:#3f6d50
 }
 /* Sticker rarity: each tier has its own colour, used for the badge gem and the glow behind the art. */
-.rarity-common { --rarity:#8a939e; --rarity-bg:#f1f2f4 }
+.rarity-common { --rarity:#23752f; --rarity-bg:#e6f5e9 }
 .rarity-rare { --rarity:#2f73d9; --rarity-bg:#e9f1fd }
 .rarity-epic { --rarity:#8447d6; --rarity-bg:#f2ebfc }
 .rarity-legendary { --rarity:#c98a10; --rarity-bg:#fdf3dc }

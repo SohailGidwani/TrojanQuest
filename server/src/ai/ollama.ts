@@ -4,7 +4,8 @@ import { ApiError } from './contracts.js';
 export class Ollama {
   constructor(private config: { baseUrl?: string; model?: string; fetch?: typeof fetch } = {}) {}
 
-  async generate<T>(schema: z.ZodType<T>, system: string, prompt: string, image?: Buffer): Promise<T> {
+  /** Creative tasks (sticker design) pass a temperature; verification and grounded answers stay at 0. */
+  async generate<T>(schema: z.ZodType<T>, system: string, prompt: string, image?: Buffer, sampling: { temperature?: number } = {}): Promise<T> {
     const format = z.toJSONSchema(schema);
     try {
       const response = await (this.config.fetch ?? fetch)(`${this.config.baseUrl ?? process.env.OLLAMA_BASE_URL ?? 'http://127.0.0.1:11434'}/api/chat`, {
@@ -13,7 +14,7 @@ export class Ollama {
         body: JSON.stringify({
           model: this.config.model ?? process.env.OLLAMA_MODEL ?? 'qwen3-vl:4b-instruct',
           stream: false, format,
-          options: { temperature: 0, num_predict: 1200, num_ctx: 16384 },
+          options: { temperature: sampling.temperature ?? 0, num_predict: 1200, num_ctx: 16384 },
           messages: [
             { role: 'system', content: `${system}\nReturn JSON matching this schema: ${JSON.stringify(format)}` },
             { role: 'user', content: prompt, ...(image ? { images: [image.toString('base64')] } : {}) },

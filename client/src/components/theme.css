@@ -18,13 +18,16 @@
   --paper:#fff;
   --xp:#3fb7e8;
   --streak:#f97316;
-  --pixel:'Pixelify Sans','Nunito',system-ui,sans-serif;
-  font-family:'Nunito',system-ui,sans-serif;
+  --pixel:'Pixelify Sans','DM Sans',system-ui,sans-serif;
+  --text:'DM Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  font-family:var(--text);
   color:var(--ink);
   background:#fff;
 }
 /* Pixelify's "fi" ligature draws as one odd glyph ("first" reads "Arst"), so ligatures stay off. */
-body { background:#fff; font-variant-ligatures:none; font-feature-settings:"liga" 0,"clig" 0; }
+/* !important because every `font:` shorthand below would otherwise reset ligatures back on. */
+body { background:#fff; }
+*, *::before, *::after { font-variant-ligatures:none !important; font-feature-settings:"liga" 0,"clig" 0 !important; }
 button,input,textarea { font-family:inherit; }
 h1,h2,h3 { color:var(--ink); }
 button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,summary:focus-visible { outline:3px solid var(--gold); outline-offset:3px; }
@@ -47,7 +50,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
 .brand-mark { background:none; width:auto; height:auto; border-radius:0; }
 .brand-mark .pin-sprite { animation:pixel-bob .9s steps(2,start) infinite; }
 .brand>span:last-child { font:700 24px/1 var(--pixel); letter-spacing:0; }
-.brand small { font-family:'Nunito',sans-serif; font-weight:800; color:var(--muted); margin-top:5px; }
+.brand small { font-family:var(--text); font-weight:800; color:var(--muted); margin-top:5px; }
 .sidebar nav { gap:8px; }
 .nav-item { border:2px solid transparent; border-radius:14px; padding:11px 12px; font-size:14px; font-weight:900; color:var(--ink); letter-spacing:.02em; }
 .nav-item:hover { background:#fafafa; color:var(--red); border-color:var(--line); }
@@ -140,6 +143,13 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
 .album-stats>span { font-weight:800; color:var(--muted); }
 .album-stats strong { font:700 30px var(--pixel); color:var(--red); letter-spacing:0; }
 .album-stats strong small { font-family:var(--pixel); color:var(--muted); }
+.album-stat { display:flex; align-items:center; gap:12px; }
+.album-stat-icon { display:grid; place-items:center; width:48px; height:48px; flex-shrink:0; border-radius:14px; border:2px solid var(--line); background:#fff; box-shadow:0 3px 0 var(--line); }
+.album-stat.places .album-stat-icon { background:#fff1f1; border-color:#f3b7b7; box-shadow:0 3px 0 #f3b7b7; }
+.album-stat.stickers .album-stat-icon { background:#e8f6fd; border-color:#a9dcf2; box-shadow:0 3px 0 #a9dcf2; }
+.album-stat.stickers strong { color:#1f7fae; }
+.album-stat.quests .album-stat-icon { background:var(--gold-soft); border-color:var(--gold); box-shadow:0 3px 0 var(--gold); }
+.album-stat.quests strong { color:#8a6a00; }
 .sticker-tile { border:2px solid var(--line); border-radius:18px; box-shadow:0 4px 0 var(--line); padding-top:24px; transition:transform .08s ease, box-shadow .08s ease; }
 .sticker-tile:hover { border-color:var(--gold); box-shadow:0 4px 0 var(--gold); background:var(--gold-soft); }
 .sticker-tile:active { transform:translateY(4px); box-shadow:none; background:var(--gold-soft); }
@@ -220,6 +230,94 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
 @media(max-width:760px) {
   .party-promo { flex-direction:column; align-items:flex-start; }
   .party-panel { flex-wrap:wrap; }
+}
+
+/* ---------- Student-org quest creation ---------- */
+.create-quest-card { display:flex; align-items:center; gap:16px; margin-bottom:18px; padding:16px 20px; border:2px dashed var(--red); border-radius:20px; background:#fff1f1; color:var(--ink); box-shadow:0 4px 0 #f3b7b7; transition:transform .08s ease, box-shadow .08s ease; }
+.create-quest-card:hover { background:#ffe8e8; }
+.create-quest-card:active { transform:translateY(4px); box-shadow:none; }
+.create-quest-card>span { flex:1; min-width:0; }
+.create-quest-card strong { display:block; font:700 20px var(--pixel); color:var(--red); }
+.create-quest-card small { display:block; margin-top:3px; font-size:13px; font-weight:700; color:var(--muted); }
+.create-quest-card.is-locked { border-color:var(--line-lip); background:#fbfbfc; box-shadow:0 4px 0 var(--line); }
+.create-quest-card.is-locked strong { color:var(--muted); }
+.org-byline { display:inline-block; margin:-4px 0 8px; padding:2px 9px; border-radius:999px; background:var(--gold-soft); border:2px solid var(--gold); color:#5c4600; font-size:12px; font-weight:900; }
+.org-badge { flex-shrink:0; padding:8px 12px; border:2px solid var(--gold); border-radius:14px; background:var(--gold-soft); box-shadow:0 3px 0 var(--gold); color:#5c4600; font-size:13px; font-weight:700; }
+.org-badge strong { font-weight:900; }
+.stop-lore { display:block; margin:3px 0; font-size:12px; font-style:normal; font-weight:700; color:#5c4600; line-height:1.45; }
+.delete-quest { margin-top:14px; color:var(--muted); }
+.quest-creator { display:grid; gap:20px; max-width:860px; }
+.quest-creator>.page-heading { margin-bottom:0; }
+.creator-pin { display:flex; align-items:flex-end; gap:10px; max-width:620px; }
+.creator-pin>.pin-sprite { animation:pixel-bob .9s steps(2,start) infinite; margin-bottom:6px; }
+.creator-pin>.pin-says { flex:1; }
+.creator-section h2 { font:700 22px var(--pixel); margin:0 0 6px; }
+.creator-section .section-sub { margin:0 0 6px; font-weight:700; color:var(--muted); font-size:14px; }
+.creator-section .field-label { display:flex; align-items:baseline; gap:8px; margin:16px 0 7px; font-size:13px; font-weight:900; color:var(--ink); }
+.optional { font-weight:700; color:var(--muted); font-size:12px; }
+.char-count { margin-left:auto; font-size:11px; font-weight:700; color:var(--muted); }
+.char-count.over { color:#a3111a; }
+.text-field { width:100%; box-sizing:border-box; border:2px solid var(--line); border-radius:14px; padding:12px 14px; background:#fff; color:var(--ink); font-size:15px; font-weight:700; box-shadow:0 3px 0 var(--line); resize:vertical; }
+.text-field:focus { outline:3px solid var(--gold); outline-offset:1px; border-color:var(--gold); }
+select.text-field { appearance:auto; cursor:pointer; }
+.field-hint { margin:7px 0 0; font-size:12px; font-weight:700; color:var(--muted); }
+.stops-section>.section-heading { margin-bottom:12px; }
+.stop-editors { list-style:none; margin:0; padding:0; display:grid; gap:14px; }
+.stop-editor { padding:18px 20px; }
+.stop-editor-top { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+.stop-node { display:grid; place-items:center; width:40px; height:36px; flex-shrink:0; border-radius:50%; background:var(--gold); box-shadow:0 4px 0 var(--gold-lip); font:700 16px var(--pixel); }
+.stop-remove { margin-left:auto; }
+.add-stop { margin-top:14px; }
+.map-picker { margin-top:14px; }
+.map-picker-map { position:relative; z-index:0; height:240px; border:3px solid var(--ink); border-radius:16px; overflow:hidden; }
+.map-picker-map .leaflet-container { cursor:crosshair; }
+.map-picker-bar { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:8px; font-size:12px; font-weight:700; color:var(--muted); }
+.art-picker { display:flex; flex-wrap:wrap; gap:8px; }
+.art-option { display:grid; place-items:center; width:66px; height:66px; padding:0; border:2px solid var(--line); border-radius:16px; background:#fff; box-shadow:0 3px 0 var(--line); cursor:pointer; }
+.art-option:hover { border-color:var(--line-lip); }
+.art-option.selected { border-color:var(--gold); background:var(--gold-soft); box-shadow:0 3px 0 var(--gold); }
+.reward-designer { display:grid; grid-template-columns:200px minmax(0,1fr); gap:24px; align-items:start; }
+.reward-preview { display:flex; flex-direction:column; align-items:center; gap:10px; padding:20px 12px; border:2px dashed var(--line-lip); border-radius:18px; background:#fbfbfc; text-align:center; position:sticky; top:20px; }
+.reward-preview strong { font:700 17px var(--pixel); }
+.reward-fields>.field-label:first-child { margin-top:0; }
+.creator-problems { padding:14px 18px; border:2px solid #f3b7b7; border-radius:16px; background:#fde8e8; color:#a3111a; font-weight:800; }
+.creator-problems ul { margin:8px 0 0; padding-left:20px; font-weight:700; font-size:14px; line-height:1.6; }
+.creator-actions { display:flex; justify-content:flex-end; gap:12px; }
+@media(max-width:760px) {
+  .reward-designer { grid-template-columns:1fr; }
+  .reward-preview { position:static; }
+  .stop-editor { padding:16px; }
+  .creator-actions>.button { flex:1; }
+  .org-badge { align-self:flex-start; }
+  .quest-creator>.page-heading { flex-direction:column; align-items:flex-start; }
+  /* Three stats share a phone's width, so each icon sits above its number. */
+  .album-stat { flex-direction:column; align-items:flex-start; gap:8px; }
+  .album-stat-icon { width:42px; height:42px; }
+}
+
+/* ---------- Challenges and the AI sticker designer ---------- */
+.challenge-meta { display:flex; flex-wrap:wrap; gap:6px 8px; margin:-4px 0 8px; }
+.challenge-meta>.org-byline { margin:0; }
+.org-byline.student { background:#e8f6fd; border-color:#a9dcf2; color:#1f5f7e; }
+.time-left { display:inline-block; padding:2px 9px; border-radius:999px; background:#fff1f1; border:2px solid #f3b7b7; color:var(--red); font:700 12px var(--pixel); letter-spacing:.03em; }
+.time-left.ended { background:#f4f4f6; border-color:var(--line-lip); color:var(--muted); }
+.days-field { max-width:200px; }
+.ai-designer { margin-top:14px; padding:14px; border:2px dashed #c9b6f2; border-radius:16px; background:#f8f4ff; }
+.ai-designer>.field-label { margin-top:0; }
+.ai-chip { display:inline-grid; place-items:center; padding:1px 7px; border-radius:8px; background:#7a5bc7; color:#fff; font:700 12px var(--pixel); box-shadow:0 2px 0 #553c96; }
+.ai-designer-row { display:flex; gap:10px; }
+.ai-designer-row>.text-field { flex:1; min-width:0; }
+.ai-designer-row>.button { flex-shrink:0; min-height:48px; background:#7a5bc7; box-shadow:0 4px 0 #553c96; }
+.ai-designer-row>.button:hover:not(:disabled) { background:#6a4bb7; }
+.ai-designer-row>.button:disabled { background:var(--line); box-shadow:none; }
+.ai-status { display:flex; align-items:center; gap:10px; margin:10px 0 0; font-size:13px; font-weight:800; color:#553c96; }
+.ai-status>.pin-sprite { animation:pixel-bob .9s steps(2,start) infinite; }
+.ai-designer .text-button { margin-top:6px; }
+.reward-fields>.ai-designer { margin-top:0; }
+@media(max-width:760px) {
+  .ai-designer-row { flex-direction:column; }
+  /* Six tabs share the bar on phones. */
+  .sidebar nav .nav-item { padding-left:2px; padding-right:2px; font-size:10px; }
 }
 
 /* ---------- Dialogs (spot cards, rewards) ---------- */
@@ -310,7 +408,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
 .trail-progress { font:700 13px var(--pixel); color:var(--red); letter-spacing:.04em; }
 .trail-choice h2 { font:700 28px var(--pixel); letter-spacing:0; }
 .trail-choice p { font-weight:700; color:var(--muted); }
-.trail-first-clue { font-family:'Nunito',sans-serif; font-weight:800; font-size:17px; border-top:2px dashed var(--line); }
+.trail-first-clue { font-family:var(--text); font-weight:800; font-size:17px; border-top:2px dashed var(--line); }
 .trail-cta { color:var(--red); font-weight:900; text-transform:uppercase; letter-spacing:.05em; }
 .revisit-places { border-top:2px dashed var(--line); }
 .revisit-places h2 { font:700 22px var(--pixel); color:var(--ink); }

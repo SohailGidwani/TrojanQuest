@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { reportPopup, suggestQuests, answerGuide, type AiDependencies } from './service.js';
+import { reportPopup, suggestQuests, answerGuide, designSticker, type AiDependencies } from './service.js';
 import { Ollama } from './ollama.js';
 import type { PopupStore } from './contracts.js';
 
@@ -94,4 +94,26 @@ test('Ollama sends native structured vision requests without persisting images',
 test('Ollama failures become a safe upstream error', async () => {
   const model = new Ollama({ fetch: async () => new Response('private upstream details', { status: 500 }) });
   await assert.rejects(reportPopup(input, { ...deps(), model }), /Ollama/);
+});
+
+test('a sticker description becomes an original design with an uppercase 3-color palette', async () => {
+  let sent: { options?: { temperature?: number }; messages?: { content: string }[] } = {};
+  const model = new Ollama({ fetch: async (_url, init) => {
+    sent = JSON.parse(String(init?.body));
+    return new Response(JSON.stringify({ message: { content: JSON.stringify({ accepted: true, reject_reason: null,
+      sticker: { key: 'book', name: 'Lamplight Owl, Keeper of the Third Floor Silence', colors: ['#2b3a67', '#fff4c2', '#14182e'], lore: 'Stays up so you can too.' } }) } }));
+  } });
+  const result = await designSticker({ prompt: 'a sleepy owl reading by lamplight', role: 'reward', quest_title: 'Late-night crawl' }, model);
+  assert.equal(result.accepted, true);
+  assert.equal(result.sticker?.key, 'book');
+  assert.ok(result.sticker!.name.length <= 40);
+  assert.deepEqual(result.sticker?.colors, ['#2B3A67', '#FFF4C2', '#14182E']);
+  assert.equal(sent.options?.temperature, 0.8);
+  assert.ok(sent.messages?.[1].content.includes('sleepy owl'));
+});
+
+test('refused sticker ideas return a reason and no design', async () => {
+  const model = new Ollama({ fetch: async () => new Response(JSON.stringify({ message: { content: JSON.stringify({ accepted: false, reject_reason: 'Brand logos are not allowed.', sticker: null }) } })) });
+  const result = await designSticker({ prompt: 'the logo of a soda company', role: 'stop' }, model);
+  assert.deepEqual(result, { accepted: false, reject_reason: 'Brand logos are not allowed.', sticker: null });
 });
