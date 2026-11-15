@@ -1,4 +1,5 @@
 import { Icon } from '../components/Icon'
+import { Pin, PinSays } from '../components/Pixel'
 
 export function WelcomeScreen({ onBegin }: { onBegin: () => void }) {
   return <section className="orientation-welcome" aria-labelledby="welcome-title">
@@ -7,6 +8,7 @@ export function WelcomeScreen({ onBegin }: { onBegin: () => void }) {
       <h1 id="welcome-title">A big campus.<br/>One place to begin.</h1>
       <p>New faces. New paths. A whole campus to make your own.</p>
       <p>For many Trojans, it starts at orientation. Your TrojanQuest starts there too: <strong>Bovard Auditorium.</strong></p>
+      <div className="welcome-pin"><Pin size={72}/><PinSays>Hi, I’m Pin! I’ll read you every clue. Our first stop is Bovard.</PinSays></div>
       <button className="button primary" onClick={onBegin}>Let’s find Bovard<Icon name="arrow" size={18}/></button>
       <p className="welcome-permission"><Icon name="pin" size={15}/>Location stays off until you choose to use it.</p>
     </div>

@@ -15,16 +15,20 @@ const places: [string, string, Category, string][] = [
   ['health', 'Student Health', 'essentials', 'heart'], ['career', 'Career Center', 'essentials', 'bolt'], ['cultural', 'Cultural Centers', 'essentials', 'heart'],
   ['tutoring', 'Tutoring Resources', 'essentials', 'book'], ['fertitta', 'Fertitta Hall', 'study', 'bolt'], ['tutor', 'Ronald Tutor Hall', 'hangout', 'star'],
 ]
-export const demoSpots: Spot[] = places.map(([id, name, category, sticker_key]) => ({
-  id, name, category, sticker_key, lat: huntPins[id]?.[0] ?? 34.0257, lng: huntPins[id]?.[1] ?? -118.2856,
+// Each spot's sticker_key is its catalogue entry in content/stickers.json (same as the spot id here).
+export const demoSpots: Spot[] = places.map(([id, name, category]) => ({
+  id, name, category, sticker_key: id, lat: huntPins[id]?.[0] ?? 34.0257, lng: huntPins[id]?.[1] ?? -118.2856,
   card_text: 'A new corner of campus for your collection. This is a sample card; verified details and opening hours will come with the campus catalogue.',
   tip: 'Come back in the morning, afternoon, or evening to collect a different time-of-day edition.',
 }))
 export const demoQuests: Quest[] = [
-  { id: 'study-tour', title: 'Find your focus', blurb: 'Three libraries. Three chances to find your new favorite study spot.', spot_ids: ['leavey', 'doheny', 'philosophy'], reward_sticker_key: 'book' },
-  { id: 'campus-break', title: 'The campus catch-up', blurb: 'Take a break, find a bite, and spend a little time outside.', spot_ids: ['village', 'campus-center', 'mccarthy'], reward_sticker_key: 'bowl' },
-  { id: 'first-week', title: 'Your first-week toolkit', blurb: 'Get to know the people and places that can help you along the way.', spot_ids: ['health', 'career', 'cultural'], reward_sticker_key: 'heart' },
-  { id: 'fresh-air', title: 'A little fresh air', blurb: 'Close the laptop. Find a different view of campus.', spot_ids: ['alumni', 'bovard', 'exposition'], reward_sticker_key: 'leaf' },
+  { id: 'study-tour', title: 'Find your focus', blurb: 'Three libraries. Three chances to find your new favorite study spot.', spot_ids: ['leavey', 'doheny', 'philosophy'], reward_sticker_key: 'quest-study-tour' },
+  { id: 'campus-break', title: 'The campus catch-up', blurb: 'Take a break, find a bite, and spend a little time outside.', spot_ids: ['village', 'campus-center', 'mccarthy'], reward_sticker_key: 'quest-campus-break' },
+  { id: 'first-week', title: 'Your first-week toolkit', blurb: 'Get to know the people and places that can help you along the way.', spot_ids: ['health', 'career', 'cultural'], reward_sticker_key: 'quest-first-week' },
+  { id: 'fresh-air', title: 'A little fresh air', blurb: 'Close the laptop. Find a different view of campus.', spot_ids: ['alumni', 'bovard', 'exposition'], reward_sticker_key: 'quest-fresh-air' },
+  // Sample exclusive quests: one running now, one whose window has closed.
+  { id: 'fall-trail', title: 'Fall trail', blurb: 'A limited-time loop through campus green space. Gone after November.', spot_ids: ['alumni', 'exposition', 'philosophy'], reward_sticker_key: 'quest-fall-trail' },
+  { id: 'homecoming', title: 'Homecoming weekend', blurb: 'The Homecoming route. This one has already wrapped up.', spot_ids: ['mccarthy', 'bovard', 'village'], reward_sticker_key: 'quest-homecoming' },
 ]
 export const demoFriends: Friend[] = [
   { user_id: 'maya', display_name: 'Maya', friend_code: 'TQMAYA' },
