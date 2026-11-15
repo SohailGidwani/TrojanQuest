@@ -13,6 +13,7 @@ export interface CollectionStore {
 function actionFailure(error: { code?: string } | null): never {
   if (error?.code === '42501') throw new ApiError(403, 'A verified USC account is required for this action.');
   if (error?.code === '22023' || error?.code === '22P02') throw new ApiError(400, 'Invalid request fields.');
+  if (error?.code === 'PT503') throw new ApiError(503, 'Seed the sticker catalogue before collecting this sticker.');
   databaseFailure(error);
 }
 
