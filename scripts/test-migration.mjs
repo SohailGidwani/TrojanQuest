@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { checkCollection } from './test-collection.mjs';
+import { checkFriends } from './test-friends.mjs';
 
 // Optional test dependency, kept outside the team's application lockfile.
 // Pass a module path when PGlite is installed in a separate tooling directory.
@@ -90,4 +91,6 @@ try {
   assert.deepEqual(published,[{tablename:'popups'}]);
   console.log('PASS: outsiders, unverified and anonymous accounts denied; Realtime publishes only popups');
   await checkCollection(db, { a, b, outside, unverified, anonymous, popupId: created.id, input });
+  await db.exec(await readFile(new URL('../supabase/migrations/202611140003_profiles_and_friends.sql', import.meta.url), 'utf8'));
+  await checkFriends(db, { a, b, outside, unverified, anonymous });
 } finally { await db.close(); }

@@ -5,12 +5,14 @@ import { ApiError } from '../ai/contracts.js';
 import { authenticate } from '../ai/integrations.js';
 import { createReadStore, type ReadStore } from '../db/read.js';
 import { createCollectionStore, type CollectionStore } from '../db/collection.js';
-import { catchRequestSchema, confirmRequestSchema } from '../db/schemas.js';
+import { addFriendSchema, catchRequestSchema, confirmRequestSchema, saveProfileSchema } from '../db/schemas.js';
+import { createFriendsStore, type FriendsStore } from '../db/friends.js';
 
 export interface BackendDependencies {
   authenticate(token: string): Promise<string>;
   store: ReadStore;
   actions: CollectionStore;
+  social: FriendsStore;
 }
 const failureDetails: Record<CollectionFailureReason, { status: number; error: string }> = {
   too_far: { status: 409, error: 'Move within 50 metres of this location.' },
@@ -20,7 +22,9 @@ const failureDetails: Record<CollectionFailureReason, { status: number; error: s
   quest_not_available: { status: 409, error: 'Quest reward collection is not available yet.' },
 };
 export function createBackendRouter(overrides: Partial<BackendDependencies> = {}) {
-  const deps: BackendDependencies = { authenticate, store: createReadStore(), actions: createCollectionStore(), ...overrides };
+  const deps: BackendDependencies = {
+    authenticate, store: createReadStore(), actions: createCollectionStore(), social: createFriendsStore(), ...overrides,
+  };
   const router = Router();
   const requireUser: RequestHandler = async (req, res, next) => {
     res.set('Cache-Control', 'no-store');
@@ -54,6 +58,22 @@ export function createBackendRouter(overrides: Partial<BackendDependencies> = {}
     }
     const { expires_at, confirmations, already_confirmed } = result;
     res.json({ expires_at, confirmations, already_confirmed });
+  });
+  router.get('/me/profile', requireUser, async (_req, res) => {
+    res.json(await deps.social.profile(res.locals.userId));
+  });
+  router.put('/me/profile', requireUser, express.json({ limit: '4kb' }), async (req, res) => {
+    res.json(await deps.social.saveProfile(res.locals.userId, saveProfileSchema.parse(req.body)));
+  });
+  router.get('/friends', requireUser, async (_req, res) => {
+    res.json(await deps.social.list(res.locals.userId));
+  });
+  router.post('/friends', requireUser, express.json({ limit: '4kb' }), async (req, res) => {
+    const { friend_code } = addFriendSchema.parse(req.body);
+    res.json(await deps.social.add(res.locals.userId, friend_code));
+  });
+  router.get('/friends/:id/catches', requireUser, async (req, res) => {
+    res.json(await deps.social.catches(res.locals.userId, z.uuid().parse(req.params.id)));
   });
   return router;
 }
