@@ -20,6 +20,9 @@ import '@fontsource/nunito/800.css'
 import '@fontsource/nunito/900.css'
 import '@fontsource/pixelify-sans/500.css'
 import '@fontsource/pixelify-sans/700.css'
+import { useCampusSession } from '../map/useCampusSession'
+import type { SessionState } from '../map/session'
+import { PageHeading } from './Card'
 import './collection.css'
 // Pixel Path theme (design G): loaded last so it restyles the screens above.
 import './theme.css'
@@ -39,11 +42,13 @@ function QuestRing({ quest, visited, total }: { quest: Quest; visited: number; t
 type CollectionProps ={ accessToken?: string; profile?: Profile }
 // Reset all account-scoped screens and pending requests when the session changes.
 export function CollectionApp(props: CollectionProps) {
-  return <CollectionSession key={props.accessToken ?? 'local-preview'} {...props}/>
+  const session = useCampusSession(!props.accessToken)
+  const accessToken = props.accessToken ?? session.accessToken
+  return <CollectionSession key={accessToken ?? 'local-preview'} {...props} accessToken={accessToken} session={session}/>
 }
 // Preview wrapper only: Manaswi can mount the exported screens in the final app shell.
-function CollectionSession({ accessToken, profile }: CollectionProps) {
-  const data = useCollection(accessToken, profile)
+function CollectionSession({ accessToken, profile, session }: CollectionProps & { session: SessionState }) {
+  const data = useCollection(accessToken, profile, session)
   const [huntVersion, setHuntVersion] = useState(0)
   const locked = !tutorialComplete(data.spots, data.catches)
   function resetDemo() { data.resetDemo(); setHuntVersion(value => value + 1); setDetail(null) }
@@ -67,7 +72,7 @@ function CollectionSession({ accessToken, profile }: CollectionProps) {
       <main id="main-content" className="page-content">
         {data.storageWarning ? <p className="connection-notice" role="alert">Your browser couldn’t save or reset demo progress. Changes may not persist when you reload.</p> : null}
         {data.errors.length ? <div className="connection-notice" role="alert"><div><strong>{data.mode === 'offline' ? 'The server is taking a moment.' : 'Some of your collection is still on its way.'}</strong><p>{data.errors.join(' ')}</p></div><button className="text-button" onClick={data.reload}><Icon name="refresh" size={15}/>Retry</button></div> : null}
-        {data.mode === 'loading' ? <div className="loading-state" role="status"><span className="loading-emblem"><Pin size={56} mood="think"/></span>Opening your sticker book…</div> : <Routes>
+        {data.mode === 'signed-out' ? <PageHeading title="Your campus collection needs sign-in">Live discoveries are saved to a verified USC account. Sign-in is paused while the team finishes setup. The local demo remains available separately.</PageHeading> : data.mode === 'offline' ? <PageHeading title="Your collection couldn’t load">Retry above to restore your places and saved stickers before starting the hunt.</PageHeading> : data.mode === 'loading' ? <div className="loading-state" role="status"><span className="loading-emblem"><Pin size={56} mood="think"/></span>Opening your sticker book…</div> : <Routes>
           <Route path="/hunt" element={<HuntScreen key={huntVersion} data={data}/>}/>
           {!locked ? <><Route path="/stickers" element={<StickerBook spots={data.spots} catches={data.catches} quests={data.quests} onSpot={openSpot} rolls={data.rolls}/>}/>
           <Route path="/quests" element={<QuestsScreen quests={data.quests} spots={data.spots} catches={data.catches} accepted={data.accepted} onAccept={data.acceptQuest} onSpot={openSpot} friends={data.friends} parties={data.parties} rolls={data.rolls} partiesAvailable={data.partiesAvailable} onInvite={data.inviteFriend} onRemove={data.removeFromParty}/>}/>
