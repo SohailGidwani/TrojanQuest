@@ -20,6 +20,10 @@
     { "key": "quest-first-week", "name": "First-week Toolkit", "art": "heart", "rarity": "legendary", "tags": ["quest reward", "essentials", "resource"] },
     { "key": "quest-fresh-air", "name": "Fresh Air", "art": "leaf", "rarity": "epic", "tags": ["quest reward", "outdoors", "chill"] },
     { "key": "quest-fall-trail", "name": "Fall Trail 2026", "art": "leaf", "rarity": "exclusive", "tags": ["quest reward", "seasonal", "fall 2026"], "available_from": "2026-11-01T00:00:00-08:00", "available_until": "2026-12-01T00:00:00-08:00" },
-    { "key": "quest-homecoming", "name": "Homecoming 2026", "art": "flag", "rarity": "exclusive", "tags": ["quest reward", "event", "homecoming"], "available_from": "2026-10-20T00:00:00-07:00", "available_until": "2026-11-09T00:00:00-08:00" }
+    { "key": "quest-homecoming", "name": "Homecoming 2026", "art": "flag", "rarity": "exclusive", "tags": ["quest reward", "event", "homecoming"], "available_from": "2026-10-20T00:00:00-07:00", "available_until": "2026-11-09T00:00:00-08:00" },
+    {"key": "quest-first-chapters", "name": "First Chapters", "art": "book", "rarity": "rare", "tags": ["quest reward", "starter campus"], "lore": "A reminder of your campus discoveries."},
+    {"key": "quest-green-loop", "name": "Green Loop", "art": "leaf", "rarity": "rare", "tags": ["quest reward", "starter campus"], "lore": "A reminder of your campus discoveries."},
+    {"key": "quest-library-greens", "name": "Books and a Breather", "art": "flag", "rarity": "rare", "tags": ["quest reward", "starter campus"], "lore": "A reminder of your campus discoveries."},
+    {"key": "quest-five-discoveries", "name": "Campus Explorer", "art": "star", "rarity": "rare", "tags": ["quest reward", "starter campus"], "lore": "A reminder of your campus discoveries."}
   ]
 }

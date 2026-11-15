@@ -2,9 +2,9 @@ export class RequestError extends Error {
   status: number
   constructor(status: number, message: string) { super(message); this.status = status }
 }
-export async function requestJSON<T>(path: string, options: { body?: unknown; accessToken?: string; signal?: AbortSignal } = {}): Promise<T> {
+export async function requestJSON<T>(path: string, options: { method?: 'GET' | 'POST' | 'PUT' | 'DELETE'; body?: unknown; accessToken?: string; signal?: AbortSignal } = {}): Promise<T> {
   const response = await fetch(path, {
-    method: options.body === undefined ? 'GET' : 'POST', signal: options.signal,
+    method: options.method ?? (options.body === undefined ? 'GET' : 'POST'), signal: options.signal,
     headers: { ...(options.body === undefined ? {} : { 'Content-Type': 'application/json' }), ...(options.accessToken ? { Authorization: `Bearer ${options.accessToken}` } : {}) },
     ...(options.body === undefined ? {} : { body: JSON.stringify(options.body) }),
   })

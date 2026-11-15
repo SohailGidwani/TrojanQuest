@@ -23,7 +23,7 @@ export type Palette = [string, string, string]
 export type StopPlace = { kind: 'campus'; spot_id: string } | { kind: 'point'; lat: number; lng: number }
 export interface CustomStop { name: string; lore: string; place: StopPlace; art: StickerArt; colors?: Palette }
 export interface CustomReward { name: string; art: StickerArt; rarity: CreatorRarity; lore: string; colors?: Palette }
-export interface QuestDraft { title: string; blurb: string; stops: CustomStop[]; reward: CustomReward; author: Author; days: number }
+export interface QuestDraft { title: string; blurb: string; stops: CustomStop[]; reward: CustomReward; author: Author; days: number; org_id?: string }
 export interface CustomQuest extends Omit<QuestDraft, 'days'> { id: string; by: string; created_at: string; ends_at: string }
 
 export function distanceMeters(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
@@ -102,7 +102,7 @@ export function createQuest(draft: QuestDraft, names: Record<Author, string>, id
   }
 }
 
-export const challengeOpen = (quest: CustomQuest, now = Date.now()) => Date.parse(quest.ends_at) > now
+export const challengeOpen = (quest: CustomQuest & { status?: string; starts_at?: string }, now = Date.now()) => (!quest.status || quest.status === 'live') && (!quest.starts_at || Date.parse(quest.starts_at) <= now) && Date.parse(quest.ends_at) > now
 /** "14 days left" (whole days from 48 hours up), "30 hours left", "Ends soon" or "Ended". */
 export function timeLeft(quest: CustomQuest, now = Date.now()) {
   const ms = Date.parse(quest.ends_at) - now

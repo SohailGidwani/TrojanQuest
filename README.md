@@ -46,7 +46,7 @@ npm run build
 npm start
 ```
 
-After building, Express serves the client at http://localhost:3001. The hunt and collection/social screens are implemented; Kartik's catch, confirmation, profile and friend routes are now merged. Live data still needs the three hosted migrations, private server-side database credentials and Cal's content. `GET /api/health` is available without credentials. Normal operation requires a verified USC session; use the explicit local demo while sign-in is deferred.
+After building, Express serves the client at http://localhost:3001. The hunt and collection/social screens are implemented; Kartik's catch, confirmation, profile and friend routes are now merged. Live mode needs private server-side credentials and the hosted schema described in the integration record. A five-place starter catalogue and four authored quests are included. `GET /api/health` is available without credentials. Normal operation requires a verified USC session; email sign-in is available, with an explicit local demo separately.
 
 ## Sohail's implementation
 
@@ -66,7 +66,7 @@ Missing credentials, database helpers or content produce explicit errors rather 
 
 Details: [docs/quest-parties.md](docs/quest-parties.md).
 
-**Challenges: backend implemented; hosted rollout and live client wiring pending.** Migration `202611150008_challenges.sql` and the authenticated routes provide the following. Full API and owner handoff: [docs/challenges-backend-handoff.md](docs/challenges-backend-handoff.md). Original feature spec: [docs/challenges.md](docs/challenges.md).
+**Challenges: backend and live client integrated.** Migration `202611150008_challenges.sql` and the authenticated routes provide the following. Full API and owner handoff: [docs/challenges-backend-handoff.md](docs/challenges-backend-handoff.md). Original feature spec: [docs/challenges.md](docs/challenges.md).
 
 - **Shared types**
   - `Challenge`, `ChallengeStop` and `CreateChallengeRequest` mirror the demo draft, with server-assigned UUIDs and review status.
@@ -89,7 +89,7 @@ Details: [docs/quest-parties.md](docs/quest-parties.md).
   - `POST /api/challenges/:id/review` (team approval).
   - `POST /api/challenges/:id/accept` and `GET /api/me/orgs`.
 
-**Rollout:** apply migrations 007–008 after 001–006 and provision the team-approved org/admin/reviewer rows. All submissions start pending, reviewers cannot approve their own, and archiving preserves earned stickers. Hosted migrations 007–008 were applied and verified on 2026-11-15; see [rollout verification](docs/hosted-rollout-20261115.md). Frontend owners still need to connect the live Challenges tab; Sohail owns the automated AI prescreen integration. The demo is not silently upgraded to server persistence.
+**Rollout:** migrations 007–008 are deployed. The live client now uses persisted acceptances, incoming invitations, party membership and server-written rewards, and supports challenge submission, review, archive and approved-org selection. Migration 009 adds recorded AI screening and blocks publication until screening passes; independent human review remains required. See [integration and deployment record](docs/live-integration-20261115.md) for deployment status, account provisioning and validation. Explicit demo mode still keeps its own browser-local data.
 
 The AI sticker designer (`POST /api/stickers/design`, in Sohail's `server/src/ai/`) is already built.
 

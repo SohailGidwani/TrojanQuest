@@ -12,6 +12,7 @@ import type { Spot } from '../components/types'
 import { creatorRarities, durations, limits, normalizePalette, stickerArts } from '../components/customQuests'
 import type { Author, CreatorRarity, CustomReward, CustomStop, Palette, QuestDraft, StickerArt } from '../components/customQuests'
 import { MapPicker } from './MapPicker'
+import type { ChallengeOrg } from '../../../shared/types'
 
 type DraftStop = CustomStop & { key: number }
 type AiSticker = { key: StickerArt; name: string; colors: string[]; lore: string }
@@ -59,7 +60,7 @@ function AiDesigner({ id, role, questTitle, stopName, accessToken, hasColors, on
 }
 
 /** Post a challenge: a limited-time quest by a student or their org, with stops, names, lore and stickers. */
-export function QuestCreator({ campusSpots, canCreate, names, accessToken, onCreate }: { campusSpots: Spot[]; canCreate: boolean; names: Partial<Record<Author, string>>; accessToken?: string; onCreate: (draft: QuestDraft) => string[] }) {
+export function QuestCreator({ campusSpots, canCreate, names, accessToken, onCreate, orgs = [], isDemo = false }: { campusSpots: Spot[]; canCreate: boolean; names: Partial<Record<Author, string>>; accessToken?: string; orgs?: ChallengeOrg[]; isDemo?: boolean; onCreate: (draft: QuestDraft) => Promise<string[]> }) {
   const navigate = useNavigate()
   const nextKey = useRef(2)
   const [title, setTitle] = useState('')
@@ -69,10 +70,12 @@ export function QuestCreator({ campusSpots, canCreate, names, accessToken, onCre
   const [stops, setStops] = useState<DraftStop[]>([{ key: 1, name: '', lore: '', art: 'star', place: { kind: 'campus', spot_id: '' } }])
   const [reward, setReward] = useState<CustomReward>({ name: '', art: 'star', rarity: 'rare', lore: '' })
   const [problems, setProblems] = useState<string[]>([])
+  const [pending, setPending] = useState(false)
+  const [orgId, setOrgId] = useState(() => orgs.find(o => o.role === 'admin')?.id ?? '')
   const problemBox = useRef<HTMLDivElement>(null)
 
   if (!canCreate) return <><Link to="/challenges" className="back-link"><Icon name="back" size={17}/>Back to challenges</Link><PageHeading title="Post a challenge">Students and student orgs can post limited-time quests with their own stops, lore and stickers.</PageHeading>
-    <Card><EmptyState title="Coming with the server update" action={<Link className="button secondary" to="/challenges">Back to challenges</Link>}>Posting challenges is available in the local demo for now.</EmptyState></Card></>
+    <Card><EmptyState title="Save your profile first" action={<Link className="button secondary" to="/challenges">Back to challenges</Link>}>Sign in and save your display name before submitting a challenge.</EmptyState></Card></>
 
   const update = (key: number, change: Partial<CustomStop>) => setStops(list => list.map(stop => stop.key === key ? { ...stop, ...change } : stop))
   const withoutColors = <T extends { colors?: Palette }>(item: T): T => { const next = { ...item }; delete next.colors; return next }
@@ -90,9 +93,14 @@ export function QuestCreator({ campusSpots, canCreate, names, accessToken, onCre
     setAuthor(next)
     if (!durations[next].includes(days)) setDays(Math.max(...durations[next].filter(value => value <= days)))
   }
-  function submit(event: FormEvent) {
+  async function submit(event: FormEvent) {
     event.preventDefault()
-    const result = onCreate({ title, blurb, author, days, stops: stops.map(({ key: _key, ...stop }) => stop), reward })
+    if (pending) return
+    setPending(true)
+    let result: string[]
+    try { result = await onCreate({ title, blurb, author, days, stops: stops.map(({ key: _key, ...stop }) => stop), reward, ...(!isDemo && author === 'org' ? { org_id: orgId } : {}) }) }
+    catch { result = ['The challenge could not be submitted. Please retry.'] }
+    finally { setPending(false) }
     setProblems(result)
     if (result.length) requestAnimationFrame(() => problemBox.current?.scrollIntoView({ block: 'center' }))
     else navigate('/challenges', { state: { tab: 'new' } })
@@ -108,13 +116,14 @@ export function QuestCreator({ campusSpots, canCreate, names, accessToken, onCre
       <span className="field-label">Post as</span>
       <div className="segmented" role="radiogroup" aria-label="Post as">{posters.map(kind => <button type="button" key={kind} role="radio" aria-checked={author === kind} className={author === kind ? 'active' : ''} onClick={() => chooseAuthor(kind)}>{kind === 'org' ? names.org : `You (${names.student})`}</button>)}</div>
       <p className="field-hint">{author === 'org' ? 'Org challenges show your org’s name and can run for up to 30 days.' : 'Student challenges show your display name and run for up to a week.'}</p>
+      {author === 'org' && !isDemo ? <><label className="field-label" htmlFor="challenge-org">Organisation</label><select id="challenge-org" className="text-field" value={orgId} onChange={e => setOrgId(e.target.value)}>{orgs.filter(o => o.role === 'admin').map(o => <option key={o.id} value={o.id}>{o.name}</option>)}</select></> : null}
       <label className="field-label" htmlFor="quest-title">Title <Counter value={title} max={limits.title}/></label>
       <input id="quest-title" className="text-field" value={title} maxLength={limits.title + 20} placeholder="Late-night study crawl" onChange={event => setTitle(event.target.value)}/>
       <label className="field-label" htmlFor="quest-blurb">Description <span className="optional">optional</span><Counter value={blurb} max={limits.blurb}/></label>
       <textarea id="quest-blurb" className="text-field" rows={2} value={blurb} maxLength={limits.blurb + 40} placeholder="What makes this route special?" onChange={event => setBlurb(event.target.value)}/>
       <label className="field-label" htmlFor="quest-days">Runs for</label>
       <select id="quest-days" className="text-field days-field" value={days} onChange={event => setDays(Number(event.target.value))}>{durations[author].map(value => <option key={value} value={value}>{value} {value === 1 ? 'day' : 'days'}</option>)}</select>
-      <p className="field-hint">Starts as soon as you post. After it ends, nobody can earn its stickers.</p>
+      <p className="field-hint">{isDemo ? 'Starts as soon as you post.' : 'The clock starts at submission; play opens after team review.'} After it ends, nobody can earn its stickers.</p>
     </Card>
 
     <section className="creator-section stops-section" aria-label="Challenge stops">
@@ -158,7 +167,7 @@ export function QuestCreator({ campusSpots, canCreate, names, accessToken, onCre
     </Card>
 
     {problems.length ? <div className="creator-problems" ref={problemBox} role="alert"><strong>A few things to fix</strong><ul>{problems.map(problem => <li key={problem}>{problem}</li>)}</ul></div> : null}
-    <div className="creator-actions"><Link className="button secondary" to="/challenges">Cancel</Link><button className="button primary">Post challenge<Icon name="arrow" size={16}/></button></div>
-    <p className="quiet-note">In the demo, challenges go live right away and stay in this browser. Once accounts are live, a quick review will come first.</p>
+    <div className="creator-actions"><Link className="button secondary" to="/challenges">Cancel</Link><button className="button primary" disabled={pending}>{pending ? 'Submitting…' : isDemo ? 'Post challenge' : 'Submit for review'}<Icon name="arrow" size={16}/></button></div>
+    <p className="quiet-note">{isDemo ? 'Demo challenges go live right away and stay in this browser.' : 'An automated screen and a separate team reviewer check every challenge before it becomes playable.'}</p>
   </form>
 }

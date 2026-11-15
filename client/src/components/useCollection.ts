@@ -12,9 +12,12 @@ import { demoFriendBooks, demoFriends, demoQuests, demoSpots, initialDemoState }
 import { requestJSON, RequestError } from './api'
 import { collectLiveSpot, loadLiveCollection } from '../map/liveCollection'
 import type { SessionState } from '../map/session'
+import type { Challenge, QuestAcceptanceResult, QuestParty as ServerParty, Profile as ServerProfile, StickerDefinition } from '../../../shared/types'
+import { challengePlayable, completeReadyQuests, emptyQuestState, expandLiveChallenges, loadLiveQuestState, partyRecord, savedRewardRolls } from '../map/liveQuests'
+import type { LiveQuestState } from '../map/liveQuests'
 
 const storageKey = 'trojanquest:collection-demo:v2'
-// Accepted quests live in this browser until there is a backend route for them, scoped per demo/account.
+// Legacy browser state is used only for the explicit demo; live state always comes from the server.
 const acceptedKey = 'trojanquest:accepted-quests:v1'
 function readAccepted(): Record<string, AcceptedQuests> {
   try {
@@ -23,7 +26,7 @@ function readAccepted(): Record<string, AcceptedQuests> {
     return Object.fromEntries(Object.entries(data).map(([scope, value]) => [scope, parseAcceptedQuests(value)]))
   } catch { return {} }
 }
-// Quest parties and their reward rolls are demo-only until the server supports them (docs/quest-parties.md).
+// Browser-local party simulation is retained only for the explicit demo.
 const partiesKey = 'trojanquest:quest-parties:v1'
 const rollsKey = 'trojanquest:quest-rolls:v1'
 function readScoped<T>(key: string, parse: (value: unknown) => T): Record<string, T> {
@@ -41,7 +44,7 @@ function rewardMessage(title: string, roll: RewardRoll) {
   if (roll.copies === 2) return `Party bonus! 2× “${title}” stickers${roll.capped ? ` (already ${tier}, the top tier)` : ''}.`
   return `Quest complete! “${title}” reward added. The party bonus didn’t land this time.`
 }
-// Challenges: limited-time quests created by students and student orgs. Demo-only until the server supports them (docs/challenges.md).
+// Demo challenges remain local; live submissions use the authenticated moderation workflow.
 const customQuestsKey = 'trojanquest:custom-quests:v1'
 /** The demo user also manages a sample student org, so both kinds of challenge can be tried. */
 export const demoOrg = { name: 'Demo Student Org' }
@@ -61,6 +64,13 @@ export function useCollection(accessToken?: string, profile?: Profile, session: 
   const [partiesByScope, setPartiesByScope] = useState(() => readScoped(partiesKey, parseParties))
   const [rollsByScope, setRollsByScope] = useState(() => readScoped(rollsKey, parseRolls))
   const [customQuests, setCustomQuests] = useState<CustomQuest[]>(readCustomQuests)
+  const [live, setLive] = useState<LiveQuestState>(emptyQuestState)
+  const liveRef = useRef(live)
+  liveRef.current = live
+  const [busy, setBusy] = useState(false)
+  const busyRef = useRef(false)
+  const [clock, setClock] = useState(Date.now)
+  useEffect(() => { const timer = window.setInterval(() => setClock(Date.now()), 30_000); return () => window.clearInterval(timer) }, [])
   useEffect(() => { try { localStorage.setItem(customQuestsKey, JSON.stringify(customQuests)) } catch { setStorageWarning(true) } }, [customQuests])
   // Created quests contribute a quest, pinned stops and stickers; register the stickers before anything renders them.
   const created = useMemo(() => {
@@ -84,8 +94,22 @@ export function useCollection(accessToken?: string, profile?: Profile, session: 
         if (!session.ready) { setMode('loading'); return }
         if (!accessToken) { setRemote(empty); setMode('signed-out'); setErrors(session.failed ? ['We couldn’t restore a campus session. Check the public Supabase configuration, or try again.'] : []); return }
         const result = await loadLiveCollection(accessToken, controller.signal)
+        const [state, stickers] = await Promise.all([
+          loadLiveQuestState(accessToken, controller.signal),
+          requestJSON<StickerDefinition[]>('/api/stickers', { accessToken, signal: controller.signal }),
+        ])
         if (controller.signal.aborted) return
-        setRemote(result.data); setErrors(result.errors); setMode('live')
+        registerStickers(stickers)
+        setLive(state); liveRef.current = state
+        const active = expandLiveChallenges(state.challenges)
+        // Also reconcile a saved final visit after a reload or an interrupted response.
+        let catches = result.data.catches
+        try {
+          const completed = await completeReadyQuests([...result.data.quests, ...active.quests], state.accepted, catches, accessToken)
+          if (controller.signal.aborted) return
+          catches = completed.catches
+        } catch { result.errors.push('Your visits are saved, but a quest reward could not be synced. Retry loading your collection.') }
+        setRemote({ ...result.data, catches }); setErrors(result.errors); setMode('live')
       } catch (error) {
         if (!controller.signal.aborted) {
           setRemote(empty)
@@ -115,16 +139,34 @@ export function useCollection(accessToken?: string, profile?: Profile, session: 
     setDemo(initialDemoState); setAcceptedByScope(withoutDemo); setCustomQuests([]); setMessage('')
   }
   const isDemo = mode === 'demo'
-  const currentProfile = isDemo ? { display_name: 'Sohail', friend_code: 'TQSOHAIL' } : profile
+  const currentProfile = isDemo ? { display_name: 'Sohail', friend_code: 'TQSOHAIL' } : live.profile ?? profile
+  const liveCreated = expandLiveChallenges(live.challenges, clock)
   const campusSpots = isDemo ? demoSpots : remote.spots
-  const spots = isDemo ? [...demoSpots, ...created.spots] : remote.spots
+  const spots = isDemo ? [...demoSpots, ...created.spots] : [...remote.spots, ...liveCreated.spots]
   const catches = isDemo ? demo.catches : remote.catches
-  const quests = isDemo ? [...demoQuests, ...created.quests] : remote.quests
+  const quests = isDemo ? [...demoQuests, ...created.quests] : [...remote.quests, ...liveCreated.quests]
   const friends = isDemo ? demoFriends.filter(friend => demo.friendIds.includes(friend.user_id)) : remote.friends
   const acceptedScope = isDemo ? 'demo' : currentProfile?.friend_code ?? 'account'
-  const accepted = acceptedByScope[acceptedScope] ?? {}
-  const parties = partiesByScope[acceptedScope] ?? {}
-  const rolls = rollsByScope[acceptedScope] ?? {}
+  const accepted = isDemo ? acceptedByScope[acceptedScope] ?? {} : live.accepted
+  const parties = isDemo ? partiesByScope[acceptedScope] ?? {} : live.parties
+  const rolls = isDemo ? rollsByScope[acceptedScope] ?? {} : savedRewardRolls(quests, catches, stickerCatalogue)
+  async function refreshLive() {
+    if (!accessToken) return
+    const [state, catches] = await Promise.all([loadLiveQuestState(accessToken), requestJSON<Catch[]>('/api/me/catches', { accessToken })])
+    setLive(state); liveRef.current = state; setRemote(previous => ({ ...previous, catches }))
+  }
+  async function liveAction(action: () => Promise<void>) {
+    if (busyRef.current || mode !== 'live' || !accessToken) return
+    busyRef.current = true; setBusy(true)
+    try { await action() } catch (e) { setMessage(e instanceof Error ? e.message : 'That action could not be saved. Please retry.') }
+    finally { busyRef.current = false; setBusy(false) }
+  }
+  async function syncRewards(book: Catch[], acceptances = liveRef.current.accepted) {
+    if (!accessToken) return
+    const completed = await completeReadyQuests(quests, acceptances, book, accessToken)
+    setRemote(previous => ({ ...previous, catches: completed.catches }))
+    if (completed.results.length) setMessage('Quest complete! Your server-verified reward is in your collection.')
+  }
   // Rolls the party bonus for every quest reward that was just added; returns the toast for the last one.
   function rollNewRewards(before: Catch[], after: Catch[]) {
     const fresh = after.filter(c => c.source === 'quest' && !before.some(previous => previous.id === c.id))
@@ -153,6 +195,7 @@ export function useCollection(accessToken?: string, profile?: Profile, session: 
   /** Official quests stay open; challenges close at their end date. */
   function questOpen(questId: string) {
     if (!isChallengeId(questId)) return true
+    if (!isDemo) return live.challenges.some(c => `cq-${c.id}` === questId && challengePlayable(c))
     const challenge = customQuests.find(item => `cq-${item.id}` === questId)
     return !!challenge && challengeOpen(challenge)
   }
@@ -168,6 +211,11 @@ export function useCollection(accessToken?: string, profile?: Profile, session: 
   }
   /** Invites a friend to an accepted, unfinished quest. Parties hold at most three friends. */
   function inviteFriend(questId: string, friendId: string) {
+    if (!isDemo) { void liveAction(async () => {
+      const party = await requestJSON<ServerParty>(`/api/quests/${encodeURIComponent(questId)}/party`, { accessToken, body: { friend_id: friendId } })
+      setLive(previous => ({ ...previous, parties: { ...previous.parties, [questId]: partyRecord(party) } }))
+      setMessage('Quest invite sent. Your friend can respond from their Quests tab.')
+    }); return }
     const quest = quests.find(item => item.id === questId), friend = friends.find(person => person.user_id === friendId)
     if (!isDemo || !quest || !friend || !accepted[questId] || questDone(questId)) return
     const party = parties[questId] ?? {}
@@ -181,10 +229,23 @@ export function useCollection(accessToken?: string, profile?: Profile, session: 
     }, 1500))
   }
   function removeFromParty(questId: string, friendId: string) {
+    if (!isDemo) { void liveAction(async () => {
+      const party = await requestJSON<ServerParty>(`/api/quests/${encodeURIComponent(questId)}/party/${encodeURIComponent(friendId)}`, { accessToken, method: 'DELETE' })
+      setLive(previous => ({ ...previous, parties: { ...previous.parties, [questId]: partyRecord(party) } }))
+    }); return }
     if (!isDemo || questDone(questId)) return
     setPartyMember(questId, friendId, null)
   }
   function acceptQuest(id: string) {
+    if (!isDemo) { void liveAction(async () => {
+      const path = isChallengeId(id) ? `/api/challenges/${encodeURIComponent(id.slice(3))}/accept` : `/api/quests/${encodeURIComponent(id)}/accept`
+      const saved = await requestJSON<QuestAcceptanceResult>(path, { accessToken, body: {} })
+      const accepted = { ...liveRef.current.accepted, [saved.quest_id]: saved.accepted_at }
+      setLive(previous => ({ ...previous, accepted })); liveRef.current = { ...liveRef.current, accepted }
+      setMessage('Quest accepted. Your previously collected visits count.')
+      await syncRewards(remote.catches, accepted)
+      await refreshLive()
+    }); return }
     const quest = quests.find(item => item.id === id)
     if (!quest || accepted[id]) return
     if (!canEarn(stickerCatalogue, quest.reward_sticker_key)) { setMessage('This exclusive quest isn’t available right now.'); return }
@@ -203,7 +264,10 @@ export function useCollection(accessToken?: string, profile?: Profile, session: 
   async function collectSpot(id: string, fix: { lat: number; lng: number }) {
     if (mode !== 'live' || !accessToken) throw new Error('A verified campus session is required to save this discovery.')
     const { result, catches } = await collectLiveSpot(id, fix, accessToken)
-    if (catches) setRemote(previous => ({ ...previous, catches }))
+    if (catches) {
+      setRemote(previous => ({ ...previous, catches }))
+      try { await syncRewards(catches) } catch { setErrors(previous => [...previous, 'Your visit is saved, but its quest reward needs a refresh. Please retry loading your collection.']) }
+    }
     return result
   }
   async function addFriend(code: string) {
@@ -227,9 +291,17 @@ export function useCollection(accessToken?: string, profile?: Profile, session: 
     }
     return requestJSON<Catch[]>(`/api/friends/${encodeURIComponent(id)}/catches`, { accessToken, signal })
   }, [isDemo, demo.friendIds, accessToken])
-  /** Publishes a challenge as the student or their org. Returns the problems to show, or an empty list once it's live. */
-  function createCustomQuest(draft: QuestDraft): string[] {
-    if (!isDemo) return ['Posting challenges is coming with the server update.']
+  /** Demo publishes locally; live mode submits for review and returns any server errors. */
+  async function createCustomQuest(draft: QuestDraft): Promise<string[]> {
+    if (!isDemo) {
+      if (!accessToken || mode !== 'live') return ['Sign in before submitting a challenge.']
+      try {
+        const saved = await requestJSON<Challenge>('/api/challenges', { accessToken, body: draft, signal: AbortSignal.timeout(180_000) })
+        setLive(previous => ({ ...previous, challenges: [saved, ...previous.challenges.filter(c => c.id !== saved.id)] }))
+        setMessage('Challenge submitted for review. It becomes playable only after approval.')
+        return []
+      } catch (e) { return [e instanceof Error ? e.message : 'Your challenge could not be submitted.'] }
+    }
     const problems = validateDraft(draft, campusSpots)
     if (problems.length) return problems
     const quest = createQuest(draft, { student: currentProfile?.display_name ?? 'A student', org: demoOrg.name })
@@ -237,8 +309,12 @@ export function useCollection(accessToken?: string, profile?: Profile, session: 
     setMessage(`“${quest.title}” is live on the Challenges tab.`)
     return []
   }
-  /** Removes a challenge along with its stickers, acceptance, party and reward roll. */
+  /** Live mode archives without deleting earned rewards; the demo removes its local records. */
   function deleteCustomQuest(questId: string) {
+    if (!isDemo) { void liveAction(async () => {
+      await requestJSON<Challenge>(`/api/challenges/${encodeURIComponent(questId.slice(3))}`, { accessToken, method: 'DELETE' })
+      await refreshLive(); setMessage('Challenge archived. Earned stickers stay in collections.')
+    }); return }
     const quest = customQuests.find(item => `cq-${item.id}` === questId)
     if (!isDemo || !quest) return
     const prefix = `cq-${quest.id}-`
@@ -252,6 +328,26 @@ export function useCollection(accessToken?: string, profile?: Profile, session: 
     setCustomQuests(previous => previous.filter(item => item.id !== quest.id))
     setMessage(`“${quest.title}” was deleted.`)
   }
-  return { mode, isDemo, profile: currentProfile, campusSpots, customQuests, createCustomQuest, deleteCustomQuest, canCreateQuests: isDemo, org: isDemo ? demoOrg : null, spots, catches, quests, friends, errors, message, setMessage, storageWarning, visit, collectSpot, accepted, acceptQuest, parties, rolls, inviteFriend, removeFromParty, partiesAvailable: isDemo, addFriend, friendBook, resetDemo, accessToken, reload: () => setRevision(value => value + 1) }
+  function respondInvite(questId: string, ownerId: string, accept: boolean) { void liveAction(async () => {
+    await requestJSON(`/api/quest-invites/${encodeURIComponent(questId)}/${encodeURIComponent(ownerId)}`, { accessToken, body: { accept } })
+    await refreshLive()
+    // A newly accepted invitation may already have all of its visits.
+    await syncRewards(remote.catches)
+    setMessage(accept ? 'You joined the quest. Your own visits count toward your reward.' : 'Invitation declined.')
+  }) }
+  function reviewChallenge(id: string, status: 'live' | 'rejected', reason: string) { void liveAction(async () => {
+    await requestJSON(`/api/challenges/${encodeURIComponent(id)}/review`, { accessToken, body: { status, reason }, signal: AbortSignal.timeout(180_000) })
+    await refreshLive(); setRevision(value => value + 1); setMessage(status === 'live' ? 'Challenge approved and published.' : 'Challenge rejected.')
+  }) }
+  async function saveProfile(display_name: string) {
+    const profile = await requestJSON<ServerProfile>('/api/me/profile', { accessToken, method: 'PUT', body: { display_name } })
+    setLive(previous => ({ ...previous, profile })); setRevision(value => value + 1)
+  }
+  return { mode, isDemo, profile: currentProfile, campusSpots, customQuests: isDemo ? customQuests : live.challenges, createCustomQuest, deleteCustomQuest,
+    canCreateQuests: isDemo || mode === 'live' && !!currentProfile, org: isDemo ? demoOrg : live.orgs.find(o => o.role === 'admin') ?? null,
+    orgs: isDemo ? [{ id: 'demo', name: demoOrg.name, role: 'admin' as const }] : live.orgs,
+    live, busy, respondInvite, reviewChallenge, saveProfile,
+    spots, catches, quests, friends, errors, message, setMessage, storageWarning, visit, collectSpot, accepted, acceptQuest, parties, rolls, inviteFriend, removeFromParty,
+    partiesAvailable: isDemo || live.partiesAvailable, addFriend, friendBook, resetDemo, accessToken, reload: () => setRevision(value => value + 1) }
 }
 export type CollectionData = ReturnType<typeof useCollection>
