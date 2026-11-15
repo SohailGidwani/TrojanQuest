@@ -1,9 +1,9 @@
-# Backend data and collection (Kartik)
+# Backend data, collection and friends (Kartik)
 
 The backend provides shared types, seven core tables with RLS, private per-user
-pop-up confirmations, read routes, sticker collection, confirmation writes, and
-the two database helpers consumed by Sohail's AI. Profiles/friend management and
-quest reward completion remain future work.
+pop-up confirmations, read routes, sticker collection, confirmation writes,
+profiles/friends, and the two database helpers consumed by Sohail's AI. Quest
+reward completion remains future work.
 
 ## Set up Supabase
 
@@ -11,10 +11,13 @@ quest reward completion remain future work.
    through the SQL editor or your Supabase migration workflow:
    - `supabase/migrations/202611140001_backend_foundation.sql`
    - `supabase/migrations/202611140002_collection_and_confirmation.sql`
+   - `supabase/migrations/202611140003_profiles_and_friends.sql`
 
-   If the foundation is already applied, apply only the second migration. It
-   adds private confirmation records, backfills existing reporters, and adds the
-   transactional write functions; it does not delete existing spots or catches.
+   Apply only migrations not already recorded as applied. The second adds private
+   confirmations, reporter backfill and collection functions. The third adds
+   profile/friend RPCs and a case-insensitive unique friend-code index; it stops
+   rather than changing existing codes if normalized duplicates already exist.
+   None deletes existing spots or catches.
    If tables already exist outside this migration history, reconcile them rather
    than resetting a shared project.
 2. For database-backed operation, use the verified USC email OTP configuration in
@@ -45,6 +48,49 @@ Every route below requires `Authorization: Bearer <verified USC session token>`:
 - `GET /api/org-drops`: events that have started and have not ended.
 - `GET /api/me/catches`: the signed-in user's collection, newest first. A query
   parameter cannot select another user.
+
+### Profiles and friends
+
+The live UI needs a saved profile before adding friends:
+
+1. `GET /api/me/profile` returns `{user_id,display_name,friend_code}` for the
+   verified session. A missing profile returns 404; no placeholder is created.
+2. `PUT /api/me/profile` with `{display_name:"Your name"}` creates or renames that
+   same user's profile. Names are trimmed, 1–80 characters, and cannot contain
+   control characters. Friend codes are generated server-side as 12 uppercase
+   hexadecimal characters, collision-checked, and preserved through renames.
+3. The final auth/profile UI should read/save the profile and pass it to the
+   existing `<CollectionApp accessToken={...} profile={...} />`. This backend
+   change does not edit the team-owned auth or collection screens.
+
+All friend endpoints match the existing collection screen's live requests:
+
+- `GET /api/friends` returns `Friend[]`, sorted by display name and then user ID.
+  An empty list is `[]`, including before profile setup.
+- `POST /api/friends` with `{friend_code}` returns the added `Friend`. Codes are
+  trimmed and case-insensitive. Repeats return the same friend without duplicate
+  links. The caller must have a profile (409 otherwise); self-add is 400, and an
+  unknown code or ineligible target is 404.
+- `GET /api/friends/:id/catches` returns the added friend's `Catch[]`, newest first.
+  A user UUID alone does not grant access. Missing/unadded/ineligible targets all
+  return 404. Empty books return `[]`.
+
+Friend additions are directed, matching the demo's code-sharing flow: A adding
+B's code lets A view B's book. B must add A's code to view A's book. There is no
+automatic reverse addition, friend discovery, friend request inbox or chat.
+
+Only the server chooses the account identity. Extra fields such as `user_id`,
+`friend_id`, or a chosen `friend_code` on profile saves are rejected with 400.
+Responses use the existing public `Friend`/`Catch` fields only: no email, raw GPS
+or location history fields. Source IDs, variants and catch timestamps remain in
+the agreed sticker-book contract. Ineligible targets are omitted from lists and
+blocked on book reads, even if an older friendship row still exists.
+
+The third migration keeps table RLS own-row-only and grants its checked RPCs only
+to the service role. Browser clients cannot call them directly or enumerate other
+profiles/catches. The server reuses USC authentication and SQL rechecks the actor.
+The explicit no-login demo still uses its separate sample friends/local storage;
+these live routes are not mounted in that mode.
 
 ### Collect a sticker
 
@@ -121,7 +167,8 @@ there is no new database event. Expiry is checked on read; there is no cron job.
 All tables enable RLS. Verified USC users can read places, public pins and
 org drops, and only their own profile, catches and friendship rows. Browser writes
 are disabled. The write routes validate the session; SQL also rechecks that the
-actor is a confirmed, non-anonymous USC user. Friend-book access is not enabled yet.
+actor is a confirmed, non-anonymous USC user. Friend-book access is available only
+through the relationship-checked server route, not by widening browser RLS.
 
 ## Verify
 
@@ -144,9 +191,11 @@ node scripts/test-migration.mjs .backend-tools/node_modules/@electric-sql/pglite
 
 Keep `.backend-tools/` and any local npm cache out of commits. The migration test
 creates isolated auth fixtures, checks privileged RPCs, distance/expiry/deduplication,
-RLS, direct-write denial, both migrations, initial reporter backfill, collection
+RLS, direct-write denial, all three migrations, initial reporter backfill, collection
 eligibility, duplicate requests, time boundaries, confirmation extensions, and
-the publication table list. PGlite queues queries on one database connection;
+profile/code creation and collisions, directed friend authorization, ineligible
+targets, private response fields and the publication table list. PGlite queues
+queries on one database connection;
 multi-connection contention is not exercised by these tests. They cannot test
 hosted email delivery, PostgREST configuration or actual WebSocket delivery.
 

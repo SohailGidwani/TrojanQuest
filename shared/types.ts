@@ -59,6 +59,8 @@ export interface Quest {
 }
 export interface Friend { user_id: string; display_name: string; friend_code: string }
 export interface Profile extends Friend {}
+export interface SaveProfileRequest { display_name: string }
+export interface AddFriendRequest { friend_code: string }
 export interface ApiErrorResponse { error: string }
 
 export interface Position { lat: number; lng: number }

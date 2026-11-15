@@ -52,3 +52,10 @@ export const catchRequestSchema = positionSchema.extend({
   }
 });
 export const confirmRequestSchema = positionSchema.strict();
+
+export const saveProfileSchema = z.object({
+  display_name: z.string().trim().min(1).max(80).refine(name => !/\p{Cc}/u.test(name), 'Use a single-line display name.'),
+}).strict();
+export const addFriendSchema = z.object({
+  friend_code: z.string().trim().toUpperCase().regex(/^[A-Z0-9]{6,64}$/),
+}).strict();
