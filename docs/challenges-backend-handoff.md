@@ -36,3 +36,7 @@ Unit/API tests cover field validation, authentication, caller-spoof prevention, 
 Validation performed: 136 server tests, 48 client tests and the startup test pass; server typecheck/build and client production build pass. The existing `scripts/test-migration.mjs` database regression suite and the new challenge script both pass. PGlite fixtures use one connection; simultaneous transactions and hosted authenticated flows have not been exercised by these tests.
 
 Frontend wiring in `useCollection.ts`, live pending/rejected cards, org/admin selectors and the AI prescreen hookup are handoffs to their owners; this change does not unlock the live client by pretending demo persistence is server persistence.
+
+## Hosted deployment update — 2026-11-15
+
+Migrations 007–008 are now applied to the configured TrojanQuest Supabase project and all seven post-deployment SQL checks passed. The hosted REST schema is refreshed and rejects an invalid actor. See [rollout verification](hosted-rollout-20261115.md) for the exact checks and remaining integration work. Earlier setup wording describes the pre-deployment state.
