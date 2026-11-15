@@ -3,12 +3,11 @@ import { Link } from 'react-router-dom'
 import type { Spot, Variant } from '../components/types'
 import { nearbyMapVisible, nextDiscovery, trails, tutorial } from './trails'
 import type { Clue } from './trails'
-import type { CatchResult } from '../../../shared/types'
 import type { CollectionData } from '../components/useCollection'
 import { Card, EmptyState, PageHeading } from '../components/Card'
 import { Icon } from '../components/Icon'
 import { StickerImage } from '../components/StickerImage'
-import { requestJSON } from '../components/api'
+import { CatchReadbackError } from './liveCollection'
 import { campusVariant, compassDirection, proximity } from './navigation'
 import { useLocation } from './useLocation'
 import { HuntMap } from './HuntMap'
@@ -24,6 +23,7 @@ function ActiveDiscovery({ data, target, clue, tracking, onComplete, training }:
   const [hint, setHint] = useState(false)
   const [pending, setPending] = useState(false)
   const [feedback, setFeedback] = useState('')
+  const [refreshNeeded, setRefreshNeeded] = useState(false)
   useEffect(() => { const timer = window.setInterval(() => setNow(Date.now()), 1000); return () => window.clearInterval(timer) }, [])
   const simulation = data.isDemo && source === 'simulation'
   const fix = simulation && target ? { lat: target.lat + simulatedDistance / 111195, lng: target.lng, accuracy: 5, timestamp: now } : source === 'gps' ? gps.fix : null
@@ -43,15 +43,15 @@ function ActiveDiscovery({ data, target, clue, tracking, onComplete, training }:
     // eslint-disable-next-line react/purity -- Recheck wall-clock freshness in this click handler.
     const fresh = simulation ? { ...fix!, timestamp: Date.now() } : gps.fix
     if (!proximity(target, fresh).canCollect) { setFeedback('Get a fresh, accurate location fix within the discovery circle first.'); return }
-    setPending(true); setFeedback('')
+    setPending(true); setFeedback(''); setRefreshNeeded(false)
     try {
       if (data.isDemo) { const awarded = campusVariant(); data.visit(target.id, awarded); onComplete(target, awarded) }
       else {
-        const result = await requestJSON<CatchResult>('/api/catch', { accessToken: data.accessToken, body: { source: 'spot', source_id: target.id, lat: fresh!.lat, lng: fresh!.lng } })
+        const result = await data.collectSpot(target.id, fresh!)
         if (!result.ok) { setFeedback(result.reason === 'too_far' ? 'The campus server still sees you outside the 50 m circle. Move closer and try again.' : 'This discovery is not available right now.'); return }
-        setFeedback(result.already_caught ? 'This edition is already in your book.' : 'Discovery collected. Your sticker book is updating.'); data.reload(); onComplete(target, result.variant)
+        setFeedback(result.already_caught ? 'This edition is already in your book.' : 'Discovery collected. Your sticker book is up to date.'); onComplete(target, result.variant)
       }
-    } catch { setFeedback('We couldn’t save this discovery. Your progress hasn’t been marked complete; try again.') }
+    } catch (error) { setRefreshNeeded(error instanceof CatchReadbackError); setFeedback(error instanceof CatchReadbackError ? error.message : 'We couldn’t confirm this discovery. Try again; an edition can only be collected once.') }
     finally { setPending(false) }
   }
   if (!target) return <><PageHeading title="A little mystery. A real adventure.">Follow the clue. Find the place. Collect its story.</PageHeading><Card><EmptyState title="Your first trail is being prepared">The Bovard discovery needs a published campus place before it can begin.</EmptyState></Card></>
@@ -61,6 +61,7 @@ function ActiveDiscovery({ data, target, clue, tracking, onComplete, training }:
     <section ref={finder} className={`finder card${status?.canCollect ? ' finder-arrived' : ''}`} aria-label="Distance finder"><div className="finder-header"><span className={simulation ? 'location-status simulated' : 'location-status'}><span/>{simulation ? 'Simulated walk' : gps.tracking ? 'GPS enabled' : 'Location paused'}</span><span className="finder-north">North-up guidance</span></div>{nearby ? <><div className="finder-dial" aria-hidden="true"><span className="dial-north">N</span><span className="dial-east">E</span><span className="dial-south">S</span><span className="dial-west">W</span><span className="dial-circle inner"/>{status?.canCollect ? <span className="arrival-check"><Icon name="check" size={45}/></span> : <svg viewBox="0 0 128 128" className="direction-arrow" style={{ transform: `rotate(${status?.bearing ?? 0}deg)`, opacity: status?.bearing == null ? .25 : 1 }}><path d="m64 20 26 68-26-16-26 16Z" fill="currentColor"/></svg>}</div><div className="finder-distance"><strong>{status?.distance == null ? distanceLabel : `≈ ${distanceLabel}`}</strong><span>{stateLabel}</span></div><p className="bearing-copy">{status?.bearing != null && status.state !== 'arrived' ? `The target is approximately ${compassDirection(status.bearing)} of you. Align north on the map; this arrow is not your phone’s heading.` : 'Distance updates as your browser gets new location fixes.'}</p><p className="accuracy-copy">{fix ? `Reported accuracy: ±${Math.round(fix.accuracy)} m${status?.state === 'stale' ? ' · fix is older than 30 seconds' : ''}` : 'Location is used only while you’re finding this place. No location trail is saved.'}</p>
     </> : <div className="hidden-finder"><Icon name="lock" size={28}/><h3>{active ? "Keep following the clue." : "Ready for your first steps?"}</h3><p>{active ? "Location is updating quietly. The map and direction finder appear only within 150 m, with an accurate fix." : "Start location tracking to discover what’s nearby. Your destination stays a mystery until you get close."}</p></div>}<div className="finder-controls"><button className="button secondary" onClick={() => { setSource('gps'); gps.start(); setFeedback('') }}><Icon name="pin" size={16}/>{gps.tracking ? 'Refresh GPS' : 'Use my location'}</button>{active ? <button className="button secondary" onClick={() => { gps.stop(); setSource('off') }}>Pause</button> : null}</div>{data.isDemo ? <div className="simulation-controls">{simulation ? <><label htmlFor="walk-distance">Simulated distance <strong>{simulatedDistance} m</strong></label><input id="walk-distance" type="range" min="0" max="350" step="10" value={simulatedDistance} onChange={event => setSimulatedDistance(Number(event.target.value))}/><div><button onClick={() => setSimulatedDistance(200)}>Far away</button><button onClick={() => setSimulatedDistance(80)}>Getting closer</button><button onClick={() => setSimulatedDistance(20)}>At the venue</button></div><p>Test coordinates only. Demo catches stay in this browser.</p></> : <button className="text-button" onClick={() => { gps.stop(); setSource('simulation'); setSimulatedDistance(200); setFeedback('') }}>Try a simulated walk<Icon name="arrow" size={15}/></button>}</div> : null}
     {status?.state === 'stale' ? <p className="accuracy-copy" role="status">Waiting for a fresh GPS fix. The map stays tucked away until your location updates.</p> : null}{gps.error && source === 'gps' ? <p className="form-error" role="alert">{gps.error}</p> : null}{status?.state === 'uncertain' ? <p className="form-error" role="status">Waiting for a more precise location. Wait for ±25 m or better, and move closer.</p> : null}<button className="button primary full-width" disabled={pending || earned || !status?.canCollect} onClick={handleCollect}>{pending ? 'Collecting…' : earned ? 'Edition already collected' : data.isDemo ? 'Collect demo discovery' : 'Collect this discovery'}<Icon name={earned ? 'check' : 'spark'} size={17}/></button>{feedback ? <p className="hunt-feedback" role="status">{feedback}</p> : null}{earned ? <Link className="text-button book-after-hunt" to="/stickers">Open your sticker book<Icon name="arrow" size={16}/></Link> : null}<p className="quiet-note">Within 50 m, with a fresh fix whose uncertainty fits inside the circle. Follow safe public paths and look up while walking.</p></section></div>
+    {refreshNeeded ? <button className="button secondary" onClick={data.reload}>Reload saved collection<Icon name="refresh" size={16}/></button> : null}
     {nearby ? <section className="hunt-map-section"><div className="section-heading"><div><h2>Your little corner of campus</h2><p>The destination appears once your location is confidently nearby.</p></div></div>{active && status?.distance != null ? <HuntMap target={target} fix={fix} revealed={nearby} name={target.name}/> : <div className="map-consent"><Icon name="pin" size={30}/><h3>The map starts when you do.</h3><p>Enable GPS or start the simulated walk to load the campus map. Map tiles are provided by OpenStreetMap.</p></div>}<p className="quiet-note">Approximate outdoor GPS guidance, not turn-by-turn navigation or Apple Find My precision.</p></section> : null}
   </>
 }
@@ -89,7 +90,8 @@ export function HuntScreen({ data }: { data: CollectionData }) {
     try { localStorage.setItem('trojanquest:trail:v1', id) } catch { /* Optional preference; discoveries are saved separately. */ }
   }
   function finish(spot: Spot, variant: Variant) {
-    setConfirmed(previous => [...new Set([...previous, spot.id])]); setCelebration({ ...spot, variant, training: !trained }); setSimulatedDistance(200); setRevisit(null)
+    if (data.isDemo) setConfirmed(previous => [...new Set([...previous, spot.id])])
+    setCelebration({ ...spot, variant, training: !trained }); setSimulatedDistance(200); setRevisit(null)
     if (!trained && first?.id === spot.id) { setSelected(null); setChoosing(true) }
   }
   const tracking = { gps, source, setSource, simulatedDistance, setSimulatedDistance }
