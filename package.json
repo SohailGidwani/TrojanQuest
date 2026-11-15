@@ -10,10 +10,10 @@
     "node": ">=22.12"
   },
   "scripts": {
-    "dev": "concurrently -k -n server,client \"npm run dev -w server\" \"npm run dev -w client\"",
-    "dev:demo": "DEMO_MODE=true npm run dev",
+    "dev": "node scripts/dev.mjs",
+    "dev:demo": "node scripts/dev.mjs --demo",
     "build": "npm run build -w client && npm run build -w server",
-    "test": "npm run test -w server && npm run test -w client",
+    "test": "node --test scripts/dev.test.mjs && npm run test -w server && npm run test -w client",
     "typecheck": "npm run typecheck -w server && npm exec -w client tsc -- -b",
     "start": "npm run start -w server"
   },

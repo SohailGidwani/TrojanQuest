@@ -40,6 +40,7 @@ for (const [code, status, message] of [
   ['42501', 403, 'A verified USC account is required for this action.'],
   ['22023', 400, 'Invalid request fields.'],
   ['PGRST202', 503, 'Apply the backend Supabase migration before using data routes.'],
+  ['PT503', 503, 'Seed the sticker catalogue before collecting this sticker.'],
   ['XX000', 503, 'The database is unavailable. Please try again.'],
 ] as const) {
   test(`database error ${code} returns safe status ${status}`, async () => {

@@ -3,8 +3,20 @@ export type Category = 'study' | 'eat' | 'hangout' | 'chill' | 'essentials';
 export type Variant = 'morning' | 'day' | 'night' | 'seasonal' | 'special';
 export type Source = 'spot' | 'popup' | 'org' | 'quest';
 export type PopupStickerKey = 'bubble' | 'star' | 'book' | 'bowl' | 'leaf' | 'bolt' | 'heart' | 'flag';
+export type Rarity = 'common' | 'rare' | 'epic' | 'legendary' | 'exclusive';
+export interface StickerDefinition {
+  key: string;
+  name: string;
+  rarity: Rarity;
+  tags: string[];
+  image?: string;
+  art?: string;
+  lore?: string;
+  available_from?: string;
+  available_until?: string;
+}
 
-export interface Sticker {
+export interface Sticker extends Partial<StickerDefinition> {
   key: string;
   name: string;
   source: Source;
@@ -57,8 +69,12 @@ export interface Quest {
   spot_ids: string[];
   reward_sticker_key: string;
 }
+export interface QuestAcceptance { quest_id: string; accepted_at: string }
+export interface QuestAcceptanceResult extends QuestAcceptance { already_accepted: boolean }
 export interface Friend { user_id: string; display_name: string; friend_code: string }
 export interface Profile extends Friend {}
+export interface SaveProfileRequest { display_name: string }
+export interface AddFriendRequest { friend_code: string }
 export interface ApiErrorResponse { error: string }
 
 export interface Position { lat: number; lng: number }

@@ -7,7 +7,7 @@ import { canEarn } from './stickers'
 import { demoFriendBooks, demoFriends, demoQuests, demoSpots, initialDemoState } from './mock'
 import { requestJSON, RequestError } from './api'
 
-const storageKey = 'trojanquest:collection-demo:v1'
+const storageKey = 'trojanquest:collection-demo:v2'
 // Accepted quests live in this browser until there is a backend route for them, scoped per demo/account.
 const acceptedKey = 'trojanquest:accepted-quests:v1'
 function readAccepted(): Record<string, AcceptedQuests> {
@@ -52,6 +52,16 @@ export function useCollection(accessToken?: string, profile?: Profile) {
   function saveDemo(next: DemoState) {
     setDemo(next)
     try { localStorage.setItem(storageKey, JSON.stringify(next)); setStorageWarning(false) } catch { setStorageWarning(true) }
+  }
+  function resetDemo() {
+    if (mode !== 'demo') return
+    const { demo: _, ...withoutDemo } = acceptedByScope
+    try {
+      for (const key of ['trojanquest:collection-demo:v1', storageKey, 'trojanquest:trail:v1']) localStorage.removeItem(key)
+      localStorage.setItem(acceptedKey, JSON.stringify(withoutDemo))
+      setStorageWarning(false)
+    } catch { setStorageWarning(true) }
+    setDemo(initialDemoState); setAcceptedByScope(withoutDemo); setMessage('')
   }
   const isDemo = mode === 'demo'
   const currentProfile = isDemo ? { display_name: 'Sohail', friend_code: 'TQSOHAIL' } : profile
@@ -104,6 +114,6 @@ export function useCollection(accessToken?: string, profile?: Profile) {
     }
     return requestJSON<Catch[]>(`/api/friends/${encodeURIComponent(id)}/catches`, { accessToken, signal })
   }, [isDemo, demo.friendIds, accessToken])
-  return { mode, isDemo, profile: currentProfile, spots, catches, quests, friends, errors, message, setMessage, storageWarning, visit, accepted, acceptQuest, addFriend, friendBook, accessToken, reload: () => setRevision(value => value + 1) }
+  return { mode, isDemo, profile: currentProfile, spots, catches, quests, friends, errors, message, setMessage, storageWarning, visit, accepted, acceptQuest, addFriend, friendBook, resetDemo, accessToken, reload: () => setRevision(value => value + 1) }
 }
 export type CollectionData = ReturnType<typeof useCollection>

@@ -9,9 +9,9 @@ npm ci
 npm run dev:demo
 ```
 
-Open http://127.0.0.1:5173 for the collection preview. The separate AI workbench remains at `/dev/ai`. The preview includes 15 clearly labeled sample places, four quests and sample friends. Demo visits/friends are saved only under `trojanquest:collection-demo:v1` in this browser's local storage. Real mode never silently substitutes sample data. AI report pins remain a separate in-memory server demo.
+Open http://127.0.0.1:5173 for the collection preview. The separate AI workbench remains at `/dev/ai`. The preview includes 15 clearly labeled sample places, four quests and sample friends. Demo visits/friends are saved only under `trojanquest:collection-demo:v2` in this browser's local storage. Real mode never silently substitutes sample data. AI report pins remain a separate in-memory server demo.
 
-To try a reward, open Philosophy Library and collect its day edition; it completes Find your focus from the initial demo state. Day/night/morning editions do not count as multiple places for quest progress. Try friend code TQRINA or TQLEO. Maya's read-only book is seeded with all sample places. Sign-in, SMTP, real GPS catches, database writes and real-world footage are deferred.
+Fresh demos start with an empty collection for Bovard onboarding. To test a quest reward separately, use the demo spot cards to collect Leavey, Doheny and Philosophy Library in one edition each. The prior seeded v1 demo state is left untouched. Day/night/morning editions do not count as multiple places for quest progress. Try friend code TQRINA or TQLEO. Maya's read-only book is seeded with all sample places. Sign-in, SMTP, hosted database setup and real-world footage remain deferred. The Hunt screen now supports browser GPS and authenticated server catches; physical campus GPS still needs calibration.
 
 ## Components and screens
 

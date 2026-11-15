@@ -52,3 +52,62 @@ export const catchRequestSchema = positionSchema.extend({
   }
 });
 export const confirmRequestSchema = positionSchema.strict();
+
+export const saveProfileSchema = z.object({
+  display_name: z.string().trim().min(1).max(80).refine(name => !/\p{Cc}/u.test(name), 'Use a single-line display name.'),
+}).strict();
+export const addFriendSchema = z.object({
+  friend_code: z.string().trim().toUpperCase().regex(/^[A-Z0-9]{6,64}$/),
+}).strict();
+
+export const stickerDefinitionSchema = z.object({
+  key: z.string().regex(/^[a-z0-9-]{1,60}$/),
+  name: z.string().trim().min(1).max(200),
+  rarity: z.enum(['common','rare','epic','legendary','exclusive']),
+  tags: z.array(z.string().trim().min(1).max(60)).max(30)
+    .transform(tags => [...new Set(tags.map(tag => tag.toLowerCase()))]),
+  image: z.string().max(255).regex(/^[A-Za-z0-9_][A-Za-z0-9_.-]*\.(svg|png|webp)$/i).optional(),
+  art: z.enum(['bubble','star','book','bowl','leaf','bolt','heart','flag']).optional(),
+  lore: z.string().trim().max(500).optional(),
+  available_from: z.iso.datetime({ offset: true }).optional(),
+  available_until: z.iso.datetime({ offset: true }).optional(),
+}).strict().superRefine((value, ctx) => {
+  if (value.rarity === 'exclusive' && !value.available_until) {
+    ctx.addIssue({ code:'custom', path:['available_until'], message:'Exclusive stickers require an end time.' });
+  }
+  if (value.rarity !== 'exclusive' && (value.available_from || value.available_until)) {
+    ctx.addIssue({ code:'custom', message:'Only exclusive stickers have availability windows.' });
+  }
+  if (value.available_from && value.available_until && Date.parse(value.available_from) >= Date.parse(value.available_until)) {
+    ctx.addIssue({ code:'custom', path:['available_until'], message:'The end must follow the start.' });
+  }
+});
+export const stickerFileSchema = z.object({ stickers: z.array(stickerDefinitionSchema).min(1) }).strict()
+  .superRefine(({ stickers }, ctx) => {
+    const keys = new Set<string>();
+    stickers.forEach((sticker, index) => {
+      if (keys.has(sticker.key)) ctx.addIssue({ code:'custom', path:['stickers',index,'key'], message:'Duplicate sticker key.' });
+      keys.add(sticker.key);
+    });
+  });
+
+export const questIdSchema = z.string().min(1).max(120)
+  .refine(value => value === value.trim() && !/\p{Cc}/u.test(value), 'Use a nonempty, trimmed quest ID.');
+export const authoredQuestSchema = z.object({
+  id: questIdSchema,
+  title: z.string().trim().min(1).max(200),
+  blurb: z.string().max(2000),
+  spot_ids: z.array(questIdSchema).min(3).max(5),
+  reward_sticker_key: z.string().regex(/^[a-z0-9-]{1,60}$/),
+}).strict().superRefine((quest, ctx) => {
+  if (new Set(quest.spot_ids).size !== quest.spot_ids.length) {
+    ctx.addIssue({ code:'custom', path:['spot_ids'], message:'Quest stops must be distinct.' });
+  }
+});
+export const authoredQuestsFileSchema = z.array(authoredQuestSchema).min(1).max(30).superRefine((quests, ctx) => {
+  const ids = new Set<string>();
+  quests.forEach((quest, index) => {
+    if (ids.has(quest.id)) ctx.addIssue({ code:'custom', path:[index,'id'], message:'Duplicate quest ID.' });
+    ids.add(quest.id);
+  });
+});

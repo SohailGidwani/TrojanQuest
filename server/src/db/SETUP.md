@@ -1,9 +1,9 @@
-# Backend data and collection (Kartik)
+# Backend data, collection and friends (Kartik)
 
-The backend provides shared types, seven core tables with RLS, private per-user
-pop-up confirmations, read routes, sticker collection, confirmation writes, and
-the two database helpers consumed by Sohail's AI. Profiles/friend management and
-quest reward completion remain future work.
+The backend provides shared types, seven core tables with RLS, an authored sticker catalogue, private per-user
+pop-up confirmations, read routes, sticker collection, confirmation writes,
+profiles/friends, authored quest acceptance, and the two database helpers consumed
+by Sohail's AI. Quest reward completion remains future work.
 
 ## Set up Supabase
 
@@ -11,10 +11,17 @@ quest reward completion remain future work.
    through the SQL editor or your Supabase migration workflow:
    - `supabase/migrations/202611140001_backend_foundation.sql`
    - `supabase/migrations/202611140002_collection_and_confirmation.sql`
+   - `supabase/migrations/202611140003_profiles_and_friends.sql`
+   - `supabase/migrations/202611140004_sticker_catalogue.sql`
+   - `supabase/migrations/202611140005_quest_acceptance.sql`
 
-   If the foundation is already applied, apply only the second migration. It
-   adds private confirmation records, backfills existing reporters, and adds the
-   transactional write functions; it does not delete existing spots or catches.
+   Apply only migrations not already recorded as applied. The second adds private
+   confirmations, reporter backfill and collection functions. The third adds
+   profile/friend RPCs and a case-insensitive unique friend-code index; it stops
+   rather than changing existing codes if normalized duplicates already exist.
+   The fourth adds the catalogue, atomic seed import, exclusive-edition guards
+   and catalogue-aware collection. The fifth adds private per-user acceptances
+   and checked acceptance/list RPCs. None deletes existing spots or catches.
    If tables already exist outside this migration history, reconcile them rather
    than resetting a shared project.
 2. For database-backed operation, use the verified USC email OTP configuration in
@@ -24,7 +31,8 @@ quest reward completion remain future work.
 3. Put the server-side privileged key in `SUPABASE_SERVICE_ROLE_KEY` in the root
    `.env`. Do not put it in a `VITE_` variable. If that value is blank,
    URL/publishable keys alone cannot run these write helpers.
-4. Ask Cal for `content/spots.json`. Do not invent coordinates as real content.
+4. Ask Cal for `content/spots.json` and `content/stickers.json`. Do not invent
+   coordinates or substitute demo places as real content.
    From the repository root:
 
    ```sh
@@ -32,8 +40,35 @@ quest reward completion remain future work.
    node --import tsx --env-file=.env scripts/seed.ts
    ```
 
-   Use `--file <path>` to validate another spots file. Seeding updates matching IDs
-   and preserves other rows; it never deletes spots.
+   Use `--file <spots-path>` and `--stickers <catalogue-path>` for alternate files.
+   Each spot's `sticker_key` must exist in the supplied catalogue. Both files are
+   validated before a single transaction upserts them; failures roll back both.
+   Existing rows absent from the input are preserved, never deleted.
+
+   To import just the catalogue before Cal's spots are ready:
+
+   ```sh
+   node --import tsx --env-file=.env scripts/seed.ts --stickers-only --dry-run
+   node --import tsx --env-file=.env scripts/seed.ts --stickers-only
+   ```
+
+   Dry runs do not need database credentials. A seeded catalogue is now required
+   for real spot/org catches; missing keys return 503 instead of assuming common
+   rarity or bypassing an unknown exclusive window. Existing spots that use base
+   art keys must be updated to Cal's actual catalogue keys before real collection.
+
+   When `content/quests.json` is present, ordinary spots/catalogue seeding also
+   validates its 3–5 distinct stops, unique quest IDs, reward keys and referenced
+   spot sticker definitions before writing anything. To check an alternate file:
+
+   ```sh
+   node --import tsx --env-file=.env scripts/seed.ts --file <spots-path> --quests <quests-path> --dry-run
+   ```
+
+   `--quests` cannot be used with `--stickers-only`, because a full spots list is
+   needed to check references. Validation does not copy/publish the alternate
+   quest file or create a quests table; live acceptance reads the server's
+   `content/quests.json`. Missing authored content is not replaced by demo quests.
 5. Run `npm run dev`. Restart the server once after first adding the route module.
 
 ## API handoff
@@ -45,6 +80,119 @@ Every route below requires `Authorization: Bearer <verified USC session token>`:
 - `GET /api/org-drops`: events that have started and have not ended.
 - `GET /api/me/catches`: the signed-in user's collection, newest first. A query
   parameter cannot select another user.
+- `GET /api/stickers`: `StickerDefinition[]`, sorted by key, including ended
+  editions for rendering already collected stickers. Optional nullable database
+  values are omitted from responses. This is an array; the authored file uses a
+  `{stickers:[...]}` wrapper. The frontend owner can consume the API or keep its
+  authored build-time catalogue; this change does not edit their screens.
+
+### Sticker catalogue and exclusivity
+
+The shared `Rarity` and `StickerDefinition` types match the catalogue handoff.
+Definitions contain key, name, rarity and tags, with optional image, fallback art,
+lore and exclusive availability dates. Tags are normalized to lowercase and
+deduplicated by the seed loader. Asset names must be local SVG/PNG/WebP filenames.
+Catalogue dates must be ISO timestamps with an explicit timezone. Non-exclusive
+definitions cannot have dates; exclusive definitions require an end after any
+specified start. All time-of-day variants share the same definition and rarity.
+
+The database clock checks eligibility in `catch_sticker`, after source/catalogue
+locks, before inserting any catch. The start is inclusive; the end is exclusive.
+Upcoming exclusives return `not_started` (409), ended exclusives `expired` (410).
+An ended sticker remains in the catalogue and existing books; no new variant can
+be earned after its deadline. Responses now include catalogue metadata such as
+rarity, tags, image/art and any availability window in `sticker`.
+
+Exclusive keys cannot be renamed or downgraded to an ordinary rarity. Once an
+exclusive has ended, normal updates/seeding cannot extend its end to reopen it.
+Metadata corrections that leave it ended are allowed. The service role has no
+delete/truncate grant on the catalogue, and seeding never replaces the table.
+
+Org drops must reference an exclusive catalogue definition. Both its authored
+window and the event's own starts/ends are checked; the returned window is their
+intersection. Missing/misconfigured definitions fail with 503. Dynamic AI popups
+do not need a static definition: their pin expiry remains authoritative and their
+catch response is marked `exclusive` with the current pin window. AI report and
+Realtime sticker JSON keep the existing interface; that separate schema was not
+changed. Confirmation rules are unchanged and cannot revive expired pins.
+
+Quest rewards still return `quest_not_available`. This does not add quest
+reward completion, order/photo rules or a way to claim arbitrary catalogue keys.
+
+### Accepting authored quests
+
+- `POST /api/quests/:id/accept` takes an empty body or `{}`. It loads and validates
+  the server's authored quest file and looks up the URL's quest ID. Clients cannot
+  submit user IDs, acceptance times, stops, snapshots or reward keys. Extra JSON
+  fields return 400.
+- Success is 200 `{quest_id,accepted_at,already_accepted}`. The database sets the
+  timestamp. Repeating an acceptance returns the original time with
+  `already_accepted:true`, without changing the stored definition snapshot.
+- `GET /api/me/quests` returns `QuestAcceptance[]` (`{quest_id,accepted_at}`), newest
+  first. Query parameters cannot select another account. It still works if an
+  authored file is temporarily missing or a previously accepted quest is removed.
+- Unknown published IDs return 404; missing/invalid authored files or unseeded
+  stop/reward definitions return 503. A new acceptance requires the reward to be
+  available: upcoming exclusive rewards return 409 and ended rewards 410.
+- Retries for an already accepted, still-published quest preserve its original
+  snapshot/time even after its reward expires. This acknowledges an existing
+  record; it does not reopen a reward window or award a sticker. Removed quests
+  remain in the list but cannot be accepted again through an unpublished ID.
+
+The server-only RPC checks seeded spot IDs, their sticker definitions, and the
+reward catalogue in the same transaction. Each `(user_id,quest_id)` can exist only
+once, and browser RLS exposes only the current user's acceptance rows. The
+service role cannot update/delete snapshots or original timestamps through table
+grants. No location, selfie or proof is saved.
+
+The frontend owner can populate its accepted-quest map from `/api/me/quests`, then
+refresh it after acceptance. Its existing browser-only demo stays separate; these
+routes are not mounted in `dev:demo`. This change does not edit their screens.
+Acceptance does not decide stop ordering, whether old visits count, photo proof,
+completion, or reward granting. `/api/catch` still rejects quest-source claims.
+
+### Profiles and friends
+
+The live UI needs a saved profile before adding friends:
+
+1. `GET /api/me/profile` returns `{user_id,display_name,friend_code}` for the
+   verified session. A missing profile returns 404; no placeholder is created.
+2. `PUT /api/me/profile` with `{display_name:"Your name"}` creates or renames that
+   same user's profile. Names are trimmed, 1–80 characters, and cannot contain
+   control characters. Friend codes are generated server-side as 12 uppercase
+   hexadecimal characters, collision-checked, and preserved through renames.
+3. The final auth/profile UI should read/save the profile and pass it to the
+   existing `<CollectionApp accessToken={...} profile={...} />`. This backend
+   change does not edit the team-owned auth or collection screens.
+
+All friend endpoints match the existing collection screen's live requests:
+
+- `GET /api/friends` returns `Friend[]`, sorted by display name and then user ID.
+  An empty list is `[]`, including before profile setup.
+- `POST /api/friends` with `{friend_code}` returns the added `Friend`. Codes are
+  trimmed and case-insensitive. Repeats return the same friend without duplicate
+  links. The caller must have a profile (409 otherwise); self-add is 400, and an
+  unknown code or ineligible target is 404.
+- `GET /api/friends/:id/catches` returns the added friend's `Catch[]`, newest first.
+  A user UUID alone does not grant access. Missing/unadded/ineligible targets all
+  return 404. Empty books return `[]`.
+
+Friend additions are directed, matching the demo's code-sharing flow: A adding
+B's code lets A view B's book. B must add A's code to view A's book. There is no
+automatic reverse addition, friend discovery, friend request inbox or chat.
+
+Only the server chooses the account identity. Extra fields such as `user_id`,
+`friend_id`, or a chosen `friend_code` on profile saves are rejected with 400.
+Responses use the existing public `Friend`/`Catch` fields only: no email, raw GPS
+or location history fields. Source IDs, variants and catch timestamps remain in
+the agreed sticker-book contract. Ineligible targets are omitted from lists and
+blocked on book reads, even if an older friendship row still exists.
+
+The third migration keeps table RLS own-row-only and grants its checked RPCs only
+to the service role. Browser clients cannot call them directly or enumerate other
+profiles/catches. The server reuses USC authentication and SQL rechecks the actor.
+The explicit no-login demo still uses its separate sample friends/local storage;
+these live routes are not mounted in that mode.
 
 ### Collect a sticker
 
@@ -64,7 +212,7 @@ artwork or other extra fields; the server selects identity and reward details.
   `special` variant are returned. Pop-up IDs must be UUIDs.
 - Org drops require a started, unended event within 50 metres and award their
   configured sticker with the `special` variant.
-- Success is 200 `{ok:true,sticker,variant,already_caught}`. A repeat visit in the
+- Success is 200 `{ok:true,sticker,variant,already_caught}`. A repeat eligible visit in the
   same variant returns `already_caught:true` without another collection entry.
   A spot's different time variants can each be collected once, across all dates.
 - Too far preserves the team's agreed 200 `{ok:false,reason:"too_far"}` shape.
@@ -119,13 +267,14 @@ load existing pins through `/api/popups` and remove pins at `expires_at` even if
 there is no new database event. Expiry is checked on read; there is no cron job.
 
 All tables enable RLS. Verified USC users can read places, public pins and
-org drops, and only their own profile, catches and friendship rows. Browser writes
+org drops, and only their own profile, catches, friendship and acceptance rows. Browser writes
 are disabled. The write routes validate the session; SQL also rechecks that the
-actor is a confirmed, non-anonymous USC user. Friend-book access is not enabled yet.
+actor is a confirmed, non-anonymous USC user. Friend-book access is available only
+through the relationship-checked server route, not by widening browser RLS.
 
 ## Verify
 
-The root test command includes AI, backend and collection frontend logic tests:
+The root test command includes startup, AI, backend and frontend logic tests:
 
 ```sh
 npm test
@@ -144,9 +293,13 @@ node scripts/test-migration.mjs .backend-tools/node_modules/@electric-sql/pglite
 
 Keep `.backend-tools/` and any local npm cache out of commits. The migration test
 creates isolated auth fixtures, checks privileged RPCs, distance/expiry/deduplication,
-RLS, direct-write denial, both migrations, initial reporter backfill, collection
+RLS, direct-write denial, all five migrations, initial reporter backfill, collection
 eligibility, duplicate requests, time boundaries, confirmation extensions, and
-the publication table list. PGlite queues queries on one database connection;
+catalogue validation/atomic import, exclusive boundaries and closed-edition guards,
+profile/code creation and collisions, directed friend authorization, ineligible
+targets, acceptance timestamps/snapshots/availability/duplicates, absence of reward
+side effects, private response fields and the publication table list. PGlite queues
+queries on one database connection;
 multi-connection contention is not exercised by these tests. They cannot test
 hosted email delivery, PostgREST configuration or actual WebSocket delivery.
 
