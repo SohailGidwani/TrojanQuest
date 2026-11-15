@@ -90,3 +90,24 @@ export const stickerFileSchema = z.object({ stickers: z.array(stickerDefinitionS
       keys.add(sticker.key);
     });
   });
+
+export const questIdSchema = z.string().min(1).max(120)
+  .refine(value => value === value.trim() && !/\p{Cc}/u.test(value), 'Use a nonempty, trimmed quest ID.');
+export const authoredQuestSchema = z.object({
+  id: questIdSchema,
+  title: z.string().trim().min(1).max(200),
+  blurb: z.string().max(2000),
+  spot_ids: z.array(questIdSchema).min(3).max(5),
+  reward_sticker_key: z.string().regex(/^[a-z0-9-]{1,60}$/),
+}).strict().superRefine((quest, ctx) => {
+  if (new Set(quest.spot_ids).size !== quest.spot_ids.length) {
+    ctx.addIssue({ code:'custom', path:['spot_ids'], message:'Quest stops must be distinct.' });
+  }
+});
+export const authoredQuestsFileSchema = z.array(authoredQuestSchema).min(1).max(30).superRefine((quests, ctx) => {
+  const ids = new Set<string>();
+  quests.forEach((quest, index) => {
+    if (ids.has(quest.id)) ctx.addIssue({ code:'custom', path:[index,'id'], message:'Duplicate quest ID.' });
+    ids.add(quest.id);
+  });
+});

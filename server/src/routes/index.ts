@@ -5,9 +5,10 @@ import { ApiError } from '../ai/contracts.js';
 import { authenticate } from '../ai/integrations.js';
 import { createReadStore, type ReadStore } from '../db/read.js';
 import { createCollectionStore, type CollectionStore } from '../db/collection.js';
-import { addFriendSchema, catchRequestSchema, confirmRequestSchema, saveProfileSchema } from '../db/schemas.js';
+import { addFriendSchema, catchRequestSchema, confirmRequestSchema, questIdSchema, saveProfileSchema } from '../db/schemas.js';
 import { createFriendsStore, type FriendsStore } from '../db/friends.js';
 import { createStickerStore, type StickerStore } from '../db/stickers.js';
+import { createQuestStore, type QuestStore } from '../db/quests.js';
 
 export interface BackendDependencies {
   authenticate(token: string): Promise<string>;
@@ -15,6 +16,7 @@ export interface BackendDependencies {
   actions: CollectionStore;
   social: FriendsStore;
   stickers: StickerStore;
+  quests: QuestStore;
 }
 const failureDetails: Record<CollectionFailureReason, { status: number; error: string }> = {
   too_far: { status: 409, error: 'Move within 50 metres of this location.' },
@@ -26,7 +28,7 @@ const failureDetails: Record<CollectionFailureReason, { status: number; error: s
 export function createBackendRouter(overrides: Partial<BackendDependencies> = {}) {
   const deps: BackendDependencies = {
     authenticate, store: createReadStore(), actions: createCollectionStore(), social: createFriendsStore(),
-    stickers: createStickerStore(), ...overrides,
+    stickers: createStickerStore(), quests: createQuestStore(), ...overrides,
   };
   const router = Router();
   const requireUser: RequestHandler = async (req, res, next) => {
@@ -45,6 +47,11 @@ export function createBackendRouter(overrides: Partial<BackendDependencies> = {}
   router.get('/org-drops', async (_req, res) => { res.json(await deps.store.orgDrops()); });
   router.get('/me/catches', async (_req, res) => { res.json(await deps.store.catches(res.locals.userId)); });
   router.get('/stickers', requireUser, async (_req, res) => { res.json(await deps.stickers.list()); });
+  router.get('/me/quests', requireUser, async (_req, res) => { res.json(await deps.quests.list(res.locals.userId)); });
+  router.post('/quests/:id/accept', requireUser, express.json({ limit: '4kb' }), async (req, res) => {
+    z.object({}).strict().parse(req.body ?? {});
+    res.json(await deps.quests.accept(res.locals.userId, questIdSchema.parse(req.params.id)));
+  });
   router.post('/catch', requireUser, express.json({ limit: '16kb' }), async (req, res) => {
     const result = await deps.actions.catchSticker(res.locals.userId, catchRequestSchema.parse(req.body));
     // Preserve the agreed 200 {ok:false,reason:'too_far'} contract for map catches.

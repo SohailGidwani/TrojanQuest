@@ -69,6 +69,8 @@ export interface Quest {
   spot_ids: string[];
   reward_sticker_key: string;
 }
+export interface QuestAcceptance { quest_id: string; accepted_at: string }
+export interface QuestAcceptanceResult extends QuestAcceptance { already_accepted: boolean }
 export interface Friend { user_id: string; display_name: string; friend_code: string }
 export interface Profile extends Friend {}
 export interface SaveProfileRequest { display_name: string }
