@@ -1,0 +1,48 @@
+[
+  {
+    "id": "campus-first-chapters",
+    "title": "First campus chapters",
+    "blurb": "Start at Bovard, then discover two campus libraries. Visit in any order.",
+    "spot_ids": [
+      "bovard",
+      "leavey",
+      "doheny"
+    ],
+    "reward_sticker_key": "quest-first-chapters"
+  },
+  {
+    "id": "campus-green-loop",
+    "title": "A little green space",
+    "blurb": "Discover Bovard, Alumni Park and McCarthy Quad from public campus paths.",
+    "spot_ids": [
+      "bovard",
+      "alumni",
+      "mccarthy"
+    ],
+    "reward_sticker_key": "quest-green-loop"
+  },
+  {
+    "id": "campus-library-greens",
+    "title": "Books and a breather",
+    "blurb": "Visit Leavey and Doheny, with a stop at McCarthy Quad.",
+    "spot_ids": [
+      "leavey",
+      "doheny",
+      "mccarthy"
+    ],
+    "reward_sticker_key": "quest-library-greens"
+  },
+  {
+    "id": "campus-five-discoveries",
+    "title": "Five little discoveries",
+    "blurb": "Find every place in the starter campus collection. No indoor access required.",
+    "spot_ids": [
+      "bovard",
+      "leavey",
+      "doheny",
+      "alumni",
+      "mccarthy"
+    ],
+    "reward_sticker_key": "quest-five-discoveries"
+  }
+]

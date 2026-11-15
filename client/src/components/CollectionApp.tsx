@@ -27,6 +27,9 @@ import '@fontsource/pixelify-sans/700.css'
 import { useCampusSession } from '../map/useCampusSession'
 import type { SessionState } from '../map/session'
 import { PageHeading } from './Card'
+import { LiveChallengePanel } from '../quests/LiveChallengePanel'
+import { ProfileSetup } from './ProfileSetup'
+import { CampusSignIn } from '../map/CampusSignIn'
 import './collection.css'
 // Pixel Path theme (design G): loaded last so it restyles the screens above.
 import './theme.css'
@@ -77,13 +80,15 @@ function CollectionSession({ accessToken, profile, session }: CollectionProps & 
       {data.isDemo ? <div className="demo-banner"><span className="demo-dot"/><p><strong>Demo collection.</strong> Sample places and friends; visits stay in this browser. Sign-in is paused.</p>{!locked ? <a href="/dev/ai">Try photo-to-sticker<Icon name="arrow" size={14}/></a> : null}<button className="text-button demo-reset" onClick={resetDemo}><Icon name="refresh" size={14}/>Reset demo</button></div> : null}
       <main id="main-content" className="page-content">
         {data.storageWarning ? <p className="connection-notice" role="alert">Your browser couldn’t save or reset demo progress. Changes may not persist when you reload.</p> : null}
+        <ProfileSetup data={data}/>
+        {data.mode === 'live' && ['/quests', '/challenges'].includes(pathname) ? <LiveChallengePanel data={data} challenges={pathname === '/challenges'}/> : null}
         {data.errors.length ? <div className="connection-notice" role="alert"><div><strong>{data.mode === 'offline' ? 'The server is taking a moment.' : 'Some of your collection is still on its way.'}</strong><p>{data.errors.join(' ')}</p></div><button className="text-button" onClick={data.reload}><Icon name="refresh" size={15}/>Retry</button></div> : null}
-        {data.mode === 'signed-out' ? <PageHeading title="Your campus collection needs sign-in">Live discoveries are saved to a verified USC account. Sign-in is paused while the team finishes setup. The local demo remains available separately.</PageHeading> : data.mode === 'offline' ? <PageHeading title="Your collection couldn’t load">Retry above to restore your places and saved stickers before starting the hunt.</PageHeading> : data.mode === 'loading' ? <div className="loading-state" role="status"><span className="loading-emblem"><Pin size={56} mood="think"/></span>Opening your sticker book…</div> : <Routes>
+        {data.mode === 'signed-out' ? <CampusSignIn/> : data.mode === 'offline' ? <PageHeading title="Your collection couldn’t load">Retry above to restore your places and saved stickers before starting the hunt.</PageHeading> : data.mode === 'loading' ? <div className="loading-state" role="status"><span className="loading-emblem"><Pin size={56} mood="think"/></span>Opening your sticker book…</div> : <Routes>
           <Route path="/hunt" element={<HuntScreen key={huntVersion} data={data}/>}/>
           {!locked ? <><Route path="/stickers" element={<StickerBook spots={data.spots} catches={data.catches} quests={data.quests} onSpot={openSpot} rolls={data.rolls}/>}/>
-          <Route path="/quests" element={<QuestsScreen quests={data.quests} spots={data.spots} catches={data.catches} accepted={data.accepted} onAccept={data.acceptQuest} onSpot={openSpot} friends={data.friends} parties={data.parties} rolls={data.rolls} partiesAvailable={data.partiesAvailable} onInvite={data.inviteFriend} onRemove={data.removeFromParty} customQuests={data.customQuests} canCreate={data.canCreateQuests} onDeleteQuest={data.deleteCustomQuest}/>}/>
-          <Route path="/challenges" element={<QuestsScreen variant="challenges" quests={data.quests} spots={data.spots} catches={data.catches} accepted={data.accepted} onAccept={data.acceptQuest} onSpot={openSpot} friends={data.friends} parties={data.parties} rolls={data.rolls} partiesAvailable={data.partiesAvailable} onInvite={data.inviteFriend} onRemove={data.removeFromParty} customQuests={data.customQuests} canCreate={data.canCreateQuests} onDeleteQuest={data.deleteCustomQuest}/>}/>
-          <Route path="/challenges/new" element={<QuestCreator campusSpots={data.campusSpots} canCreate={data.canCreateQuests} names={{ student: data.profile?.display_name, org: data.org?.name }} accessToken={accessToken} onCreate={data.createCustomQuest}/>}/>
+          <Route path="/quests" element={<QuestsScreen quests={data.quests} spots={data.spots} catches={data.catches} accepted={data.accepted} onAccept={data.acceptQuest} onSpot={openSpot} friends={data.friends} parties={data.parties} rolls={data.rolls} partiesAvailable={data.partiesAvailable} onInvite={data.inviteFriend} onRemove={data.removeFromParty} isDemo={data.isDemo} busy={data.busy} customQuests={data.customQuests} canCreate={data.canCreateQuests} onDeleteQuest={data.deleteCustomQuest}/>}/>
+          <Route path="/challenges" element={<QuestsScreen variant="challenges" quests={data.quests} spots={data.spots} catches={data.catches} accepted={data.accepted} onAccept={data.acceptQuest} onSpot={openSpot} friends={data.friends} parties={data.parties} rolls={data.rolls} partiesAvailable={data.partiesAvailable} onInvite={data.inviteFriend} onRemove={data.removeFromParty} isDemo={data.isDemo} busy={data.busy} customQuests={data.customQuests} canCreate={data.canCreateQuests} onDeleteQuest={data.deleteCustomQuest}/>}/>
+          <Route path="/challenges/new" element={<QuestCreator campusSpots={data.campusSpots} canCreate={data.canCreateQuests} names={{ student: data.profile?.display_name, org: data.org?.name }} accessToken={accessToken} orgs={data.orgs} isDemo={data.isDemo} onCreate={data.createCustomQuest}/>}/>
           <Route path="/friends" element={<FriendsScreen data={data} onSpot={(spot, catches) => setDetail({ spot, catches, readOnly: true })}/>}/>
           <Route path="/friends/:friendId" element={<FriendsScreen data={data} onSpot={(spot, catches) => setDetail({ spot, catches, readOnly: true })}/>}/>
           <Route path="/guide" element={<GuideChat accessToken={accessToken}/>}/>
@@ -92,7 +97,7 @@ function CollectionSession({ accessToken, profile, session }: CollectionProps & 
         <footer className="page-footer"><span>Made for the little discoveries.</span><span>Welcome Week, all year.</span></footer>
       </main>
     </div>
-    <SpotCard spot={detail?.spot ?? null} catches={detail?.readOnly ? detail.catches ?? [] : data.catches} isDemo={data.isDemo} readOnly={detail?.readOnly} onClose={() => setDetail(null)} onVisit={data.visit}/>
+    <SpotCard spot={detail?.spot ?? null} catches={detail?.readOnly ? detail.catches ?? [] : data.catches} isDemo={data.isDemo} readOnly={detail?.readOnly} onClose={() => setDetail(null)} onVisit={data.visit} onCollect={data.collectSpot}/>
     {data.message ? <div className="toast" role="status"><Icon name="check"/><span>{data.message}</span><button className="icon-button" onClick={() => data.setMessage('')} aria-label="Dismiss notification"><Icon name="close" size={16}/></button></div> : null}
   </div>
 }

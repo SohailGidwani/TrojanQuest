@@ -1,6 +1,7 @@
 import express, { Router, type RequestHandler } from 'express';
 import { z } from 'zod';
-import type { CollectionFailureReason } from '../../../shared/types.js';
+import type { Challenge, CreateChallengeRequest, CollectionFailureReason } from '../../../shared/types.js';
+import { screenChallenge } from '../ai/service.js';
 import { ApiError } from '../ai/contracts.js';
 import { authenticate } from '../ai/integrations.js';
 import { createReadStore, type ReadStore } from '../db/read.js';
@@ -24,6 +25,7 @@ export interface BackendDependencies {
   parties: PartyStore;
   challenges: ChallengeStore;
   rewards: QuestRewardStore;
+  screenChallenge(input: CreateChallengeRequest | Challenge): Promise<NonNullable<Challenge['ai_screen']>>;
 }
 const failureDetails: Record<CollectionFailureReason, { status: number; error: string }> = {
   too_far: { status: 409, error: 'Move within 50 metres of this location.' },
@@ -36,7 +38,7 @@ export function createBackendRouter(overrides: Partial<BackendDependencies> = {}
   const deps: BackendDependencies = {
     authenticate, store: createReadStore(), actions: createCollectionStore(), social: createFriendsStore(),
     stickers: createStickerStore(), quests: createQuestStore(), parties: createPartyStore(),
-    challenges: createChallengeStore(), rewards: createQuestRewardStore(), ...overrides,
+    challenges: createChallengeStore(), rewards: createQuestRewardStore(), screenChallenge, ...overrides,
   };
   const router = Router();
   const requireUser: RequestHandler = async (req, res, next) => {
@@ -62,13 +64,29 @@ export function createBackendRouter(overrides: Partial<BackendDependencies> = {}
     res.json(await deps.challenges.list(res.locals.userId, query.review === 'true'));
   });
   router.post('/challenges', requireUser, express.json({ limit: '24kb' }), async (req, res) => {
-    res.status(201).json(await deps.challenges.create(res.locals.userId, createChallengeSchema.parse(req.body)));
+    const draft = createChallengeSchema.parse(req.body);
+    const saved = await deps.challenges.create(res.locals.userId, draft);
+    // Persist pending first: an unavailable model must never publish or discard the submission.
+    if (!deps.challenges.screen) { res.status(201).json(saved); return; }
+    const screen = await deps.screenChallenge(draft);
+    res.status(201).json(await deps.challenges.screen(res.locals.userId, saved.id, screen));
   });
   router.delete('/challenges/:id', requireUser, async (req, res) => {
     res.json(await deps.challenges.archive(res.locals.userId, challengeIdSchema.parse(req.params.id)));
   });
   router.post('/challenges/:id/review', requireUser, express.json({ limit: '4kb' }), async (req, res) => {
-    res.json(await deps.challenges.review(res.locals.userId, challengeIdSchema.parse(req.params.id), reviewChallengeSchema.parse(req.body)));
+    const id = challengeIdSchema.parse(req.params.id), review = reviewChallengeSchema.parse(req.body);
+    if (review.status === 'live' && deps.challenges.screen) {
+      // Authorise against the private queue before making any model call.
+      const queue = await deps.challenges.list(res.locals.userId, true);
+      const saved = queue.find(c => c.id === id);
+      if (!saved) throw new ApiError(409, 'This challenge is not pending review. Refresh the queue.');
+      if (saved.author_user_id === res.locals.userId) throw new ApiError(403, 'Another reviewer must review your challenge.');
+      const screen = await deps.screenChallenge(saved);
+      await deps.challenges.screen(res.locals.userId, id, screen);
+      if (screen.status !== 'passed') throw new ApiError(screen.status === 'unavailable' ? 503 : 409, screen.reason);
+    }
+    res.json(await deps.challenges.review(res.locals.userId, id, review));
   });
   router.post('/challenges/:id/accept', requireUser, express.json({ limit: '4kb' }), async (req, res) => {
     z.object({}).strict().parse(req.body ?? {});

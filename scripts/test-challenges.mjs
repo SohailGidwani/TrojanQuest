@@ -66,6 +66,11 @@ try {
   await fails(call('review_challenge',a,c.id,JSON.stringify({status:'live'})),'42501');
   await fails(call('accept_challenge',b,c.id),'PT410');
   assert.equal((await call('list_challenges',reviewer,true)).length,1);
+  await fails(call('review_challenge',reviewer,c.id,JSON.stringify({status:'live'})),'PT409');
+  await fails(call('record_challenge_screen',b,c.id,JSON.stringify({status:'passed',reason:'Fixture'})),'42501');
+  await call('record_challenge_screen',a,c.id,JSON.stringify({status:'flagged',reason:'Unsafe route fixture'}));
+  await fails(call('review_challenge',reviewer,c.id,JSON.stringify({status:'live'})),'PT409');
+  await call('record_challenge_screen',reviewer,c.id,JSON.stringify({status:'passed',reason:'Public campus route fixture'}));
   await call('review_challenge',reviewer,c.id,JSON.stringify({status:'live'}));
   assert.equal((await call('list_challenges',b,false)).length,1);
   await call('accept_challenge',a,c.id);
@@ -100,6 +105,7 @@ try {
   await db.exec('reset role');await db.query("update public.org_members set role='admin' where org_id=$1",[org]);
   await db.exec('set role service_role');
   const oc=await create({...draft,author:'org',org_id:org,days:30});assert.equal(oc.by,'Approved fixture org');
+  await call('record_challenge_screen',reviewer,oc.id,JSON.stringify({status:'passed',reason:'Fixture'}));
   await call('review_challenge',reviewer,oc.id,JSON.stringify({status:'live'}));
   await db.exec('reset role');
   await db.query("update public.challenges set starts_at=now()-interval '2 days',ends_at=now()-interval '1 day' where id=$1",[oc.id]);
@@ -113,5 +119,7 @@ try {
   await fails(call('complete_accepted_quest',a,'test-tour'),'42501');
   await db.exec('reset role; set role anon');
   await fails(call('list_challenges',a,false),'42501');
-  console.log('PASS: provisioned org-admin membership, expiry and browser privilege boundaries');
+  assert.equal((await db.query("select has_function_privilege('authenticated','public.record_challenge_screen(uuid,uuid,jsonb)','execute') as allowed")).rows[0].allowed,false);
+  assert.equal((await db.query("select has_function_privilege('service_role','public.review_challenge_manual(uuid,uuid,jsonb)','execute') as allowed")).rows[0].allowed,false);
+  console.log('PASS: provisioned org-admin membership, expiry, recorded screening guard and browser privilege boundaries');
 } finally { await db.close(); }

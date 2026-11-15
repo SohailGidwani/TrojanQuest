@@ -22,7 +22,8 @@ export async function createApp(env: NodeJS.ProcessEnv = process.env) {
   const backendUrl = new URL('./routes/index.ts', import.meta.url);
   if (!demoMode && existsSync(backendUrl)) {
     const { default: router } = await import(backendUrl.href);
-    app.use('/api', express.json({ limit: '16kb' }), router);
+    // Each route owns its body limit (challenge submissions allow 24 KB).
+    app.use('/api', router);
   }
   app.use('/api', (_req, res) => res.status(404).json({ error: 'Route not available.' }));
   const clientDirectory = fileURLToPath(new URL('../../client/dist/', import.meta.url));

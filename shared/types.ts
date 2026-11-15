@@ -114,6 +114,7 @@ export interface Challenge extends Omit<CreateChallengeRequest, 'days'> {
   created_at: string;
   ends_at: string;
   review_note?: string;
+  ai_screen?: { status: 'passed' | 'flagged' | 'unavailable'; reason: string; checked_at?: string };
 }
 export interface ChallengeOrg { id: string; name: string; role: 'admin' | 'member' }
 export interface ReviewChallengeRequest { status: 'live' | 'rejected'; reason?: string }

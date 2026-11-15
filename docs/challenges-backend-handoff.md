@@ -1,6 +1,6 @@
 # PR #10 backend implementation and frontend handoff
 
-The backend follows `docs/challenges.md`; no live frontend or AI-owner files are changed.
+The initial backend followed `docs/challenges.md`. The subsequent user-authorised integration connects live frontend flows and automated AI screening; see the dated integration record below.
 
 ## Setup
 
@@ -40,3 +40,11 @@ Frontend wiring in `useCollection.ts`, live pending/rejected cards, org/admin se
 ## Hosted deployment update — 2026-11-15
 
 Migrations 007–008 are now applied to the configured TrojanQuest Supabase project and all seven post-deployment SQL checks passed. The hosted REST schema is refreshed and rejects an invalid actor. See [rollout verification](hosted-rollout-20261115.md) for the exact checks and remaining integration work. Earlier setup wording describes the pre-deployment state.
+
+## Full integration update — 2026-11-15
+
+The user authorised completing frontend and AI-owner wiring across the original ownership boundaries. Live challenge submission, status/history, archive, approved-org selectors, team review, invitation inbox, party membership and server-only quest completion are connected. The creator waits for the server; live acceptances and reward rolls are never minted in localStorage. A place-card collection control supports challenge pins using the existing fresh-location and 50 m checks.
+
+Migration 009 persists the automated screen, restricts its recording to the server, and blocks publication without a passing result. Submission remains pending if the model is unavailable; approval re-screens the stored content after reviewer authorisation. A human must independently inspect public access, text, pins and designs; self-review remains blocked.
+
+See [live integration record](live-integration-20261115.md) for deployment state, reproducible checks and remaining external/hardware checks. The preceding handoff sections describe the original PR and pre-integration state.

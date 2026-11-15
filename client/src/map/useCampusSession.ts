@@ -11,12 +11,9 @@ export function useCampusSession(enabled: boolean): SessionState {
     let release = () => {}
     async function restore() {
       try {
-        const { createClient } = await import('@supabase/supabase-js')
+        const { campusAuth } = await import('./campusAuth')
         if (!active) return
-        const url = import.meta.env.VITE_SUPABASE_URL
-        const key = import.meta.env.VITE_SUPABASE_ANON_KEY
-        if (!url || !key) throw new Error('Public Supabase configuration is missing.')
-        const client = createClient(url, key, { auth: { detectSessionInUrl: false } })
+        const client = campusAuth()
         setState({ ready: false })
         const stop = observeSession({
           async read() {

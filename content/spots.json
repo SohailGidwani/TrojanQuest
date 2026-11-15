@@ -1,0 +1,52 @@
+[
+  {
+    "id": "bovard",
+    "name": "Bovard Auditorium",
+    "lat": 34.020914,
+    "lng": -118.285537,
+    "category": "hangout",
+    "card_text": "A USC performing-arts venue at 3551 Trousdale Parkway, with a hall dating to 1921.",
+    "tip": "Use the outdoor 50-metre collection circle; entering the auditorium is not required.",
+    "sticker_key": "bovard"
+  },
+  {
+    "id": "leavey",
+    "name": "Leavey Library",
+    "lat": 34.021773,
+    "lng": -118.282881,
+    "category": "study",
+    "card_text": "A USC library supporting undergraduate study. Check the official library page for current hours and access.",
+    "tip": "Discover it from the public path outside; entering the library is not required.",
+    "sticker_key": "leavey"
+  },
+  {
+    "id": "doheny",
+    "name": "Doheny Memorial Library",
+    "lat": 34.020197,
+    "lng": -118.283725,
+    "category": "study",
+    "card_text": "A campus library with book and journal collections, exhibitions and academic events.",
+    "tip": "Collect from an accessible public path outside. Check USC Libraries before planning an indoor visit.",
+    "sticker_key": "doheny"
+  },
+  {
+    "id": "alumni",
+    "name": "Alumni Park",
+    "lat": 34.020638,
+    "lng": -118.28452,
+    "category": "chill",
+    "card_text": "The green space between Doheny Library and Bovard Auditorium, used for commencement and campus events.",
+    "tip": "Stay on open public paths and respect temporary event closures.",
+    "sticker_key": "alumni"
+  },
+  {
+    "id": "mccarthy",
+    "name": "McCarthy Quad",
+    "lat": 34.02094,
+    "lng": -118.28315,
+    "category": "hangout",
+    "card_text": "A green expanse between Doheny Memorial Library and Leavey Library.",
+    "tip": "Use accessible public paths and avoid any areas closed for events.",
+    "sticker_key": "mccarthy"
+  }
+]

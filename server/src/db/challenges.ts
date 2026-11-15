@@ -58,6 +58,7 @@ export interface ChallengeStore {
   archive(userId: string, id: string): Promise<Challenge>;
   review(userId: string, id: string, input: ReviewChallengeRequest): Promise<Challenge>;
   accept(userId: string, id: string): Promise<QuestAcceptanceResult>;
+  screen?(userId: string, id: string, screen: NonNullable<Challenge['ai_screen']>): Promise<Challenge>;
 }
 export function createChallengeStore(client: () => SupabaseClient = getAdminClient): ChallengeStore {
   async function call<T>(name: string, args: Record<string, unknown>): Promise<T> {
@@ -72,5 +73,7 @@ export function createChallengeStore(client: () => SupabaseClient = getAdminClie
     archive: (userId, id) => call('archive_challenge', { p_user_id: z.uuid().parse(userId), p_id: challengeIdSchema.parse(id) }),
     review: (userId, id, input) => call('review_challenge', { p_user_id: z.uuid().parse(userId), p_id: challengeIdSchema.parse(id), p_review: reviewChallengeSchema.parse(input) }),
     accept: (userId, id) => call('accept_challenge', { p_user_id: z.uuid().parse(userId), p_id: challengeIdSchema.parse(id) }),
+    screen: (userId, id, screen) => call('record_challenge_screen', { p_user_id: z.uuid().parse(userId), p_id: challengeIdSchema.parse(id),
+      p_screen: z.object({ status: z.enum(['passed', 'flagged', 'unavailable']), reason: z.string().trim().min(1).max(400) }).strict().parse(screen) }),
   };
 }
