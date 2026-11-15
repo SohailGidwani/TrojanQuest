@@ -93,6 +93,8 @@ export const stickerFileSchema = z.object({ stickers: z.array(stickerDefinitionS
 
 export const questIdSchema = z.string().min(1).max(120)
   .refine(value => value === value.trim() && !/\p{Cc}/u.test(value), 'Use a nonempty, trimmed quest ID.');
+export const inviteToQuestSchema = z.object({ friend_id: z.uuid() }).strict();
+export const respondToQuestInviteSchema = z.object({ accept: z.boolean() }).strict();
 export const authoredQuestSchema = z.object({
   id: questIdSchema,
   title: z.string().trim().min(1).max(200),

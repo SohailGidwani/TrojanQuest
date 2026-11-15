@@ -2,7 +2,7 @@
 
 The backend provides shared types, seven core tables with RLS, an authored sticker catalogue, private per-user
 pop-up confirmations, read routes, sticker collection, confirmation writes,
-profiles/friends, authored quest acceptance, and the two database helpers consumed
+profiles/friends, authored quest acceptance, private quest parties, and the two database helpers consumed
 by Sohail's AI. Quest reward completion remains future work.
 
 ## Set up Supabase
@@ -14,6 +14,7 @@ by Sohail's AI. Quest reward completion remains future work.
    - `supabase/migrations/202611140003_profiles_and_friends.sql`
    - `supabase/migrations/202611140004_sticker_catalogue.sql`
    - `supabase/migrations/202611140005_quest_acceptance.sql`
+   - `supabase/migrations/202611150006_quest_parties.sql`
 
    Apply only migrations not already recorded as applied. The second adds private
    confirmations, reporter backfill and collection functions. The third adds
@@ -21,7 +22,10 @@ by Sohail's AI. Quest reward completion remains future work.
    rather than changing existing codes if normalized duplicates already exist.
    The fourth adds the catalogue, atomic seed import, exclusive-edition guards
    and catalogue-aware collection. The fifth adds private per-user acceptances
-   and checked acceptance/list RPCs. None deletes existing spots or catches.
+   and checked acceptance/list RPCs. The sixth adds private party tables, checked
+   invite/response RPCs, frozen group sizes and persisted quest reward outcomes.
+   None deletes existing spots or catches. The live client handoff and deferred
+   completion policy are documented in `docs/quest-parties.md`.
    If tables already exist outside this migration history, reconcile them rather
    than resetting a shared project.
 2. For database-backed operation, use the verified USC email OTP configuration in
@@ -319,7 +323,7 @@ node scripts/test-migration.mjs .backend-tools/node_modules/@electric-sql/pglite
 
 Keep `.backend-tools/` and any local npm cache out of commits. The migration test
 creates isolated auth fixtures, checks privileged RPCs, distance/expiry/deduplication,
-RLS, direct-write denial, all five migrations, initial reporter backfill, collection
+RLS, direct-write denial, all six migrations, initial reporter backfill, collection
 eligibility, duplicate requests, time boundaries, confirmation extensions, and
 catalogue validation/atomic import, exclusive boundaries and closed-edition guards,
 profile/code creation and collisions, directed friend authorization, ineligible

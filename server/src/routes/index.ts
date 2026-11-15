@@ -9,6 +9,8 @@ import { addFriendSchema, catchRequestSchema, confirmRequestSchema, questIdSchem
 import { createFriendsStore, type FriendsStore } from '../db/friends.js';
 import { createStickerStore, type StickerStore } from '../db/stickers.js';
 import { createQuestStore, type QuestStore } from '../db/quests.js';
+import { createPartyStore, type PartyStore } from '../db/parties.js';
+import { inviteToQuestSchema, respondToQuestInviteSchema } from '../db/schemas.js';
 
 export interface BackendDependencies {
   authenticate(token: string): Promise<string>;
@@ -17,6 +19,7 @@ export interface BackendDependencies {
   social: FriendsStore;
   stickers: StickerStore;
   quests: QuestStore;
+  parties: PartyStore;
 }
 const failureDetails: Record<CollectionFailureReason, { status: number; error: string }> = {
   too_far: { status: 409, error: 'Move within 50 metres of this location.' },
@@ -28,7 +31,7 @@ const failureDetails: Record<CollectionFailureReason, { status: number; error: s
 export function createBackendRouter(overrides: Partial<BackendDependencies> = {}) {
   const deps: BackendDependencies = {
     authenticate, store: createReadStore(), actions: createCollectionStore(), social: createFriendsStore(),
-    stickers: createStickerStore(), quests: createQuestStore(), ...overrides,
+    stickers: createStickerStore(), quests: createQuestStore(), parties: createPartyStore(), ...overrides,
   };
   const router = Router();
   const requireUser: RequestHandler = async (req, res, next) => {
@@ -48,6 +51,21 @@ export function createBackendRouter(overrides: Partial<BackendDependencies> = {}
   router.get('/me/catches', async (_req, res) => { res.json(await deps.store.catches(res.locals.userId)); });
   router.get('/stickers', requireUser, async (_req, res) => { res.json(await deps.stickers.list()); });
   router.get('/me/quests', requireUser, async (_req, res) => { res.json(await deps.quests.list(res.locals.userId)); });
+  router.get('/quests/:id/party', requireUser, async (req, res) => {
+    res.json(await deps.parties.read(res.locals.userId, questIdSchema.parse(req.params.id)));
+  });
+  router.post('/quests/:id/party', requireUser, express.json({ limit: '4kb' }), async (req, res) => {
+    const { friend_id } = inviteToQuestSchema.parse(req.body);
+    res.json(await deps.parties.invite(res.locals.userId, questIdSchema.parse(req.params.id), friend_id));
+  });
+  router.delete('/quests/:id/party/:friendId', requireUser, async (req, res) => {
+    res.json(await deps.parties.remove(res.locals.userId, questIdSchema.parse(req.params.id), z.uuid().parse(req.params.friendId)));
+  });
+  router.get('/me/quest-invites', requireUser, async (_req, res) => { res.json(await deps.parties.incoming(res.locals.userId)); });
+  router.post('/quest-invites/:questId/:ownerId', requireUser, express.json({ limit: '4kb' }), async (req, res) => {
+    const { accept } = respondToQuestInviteSchema.parse(req.body);
+    res.json(await deps.parties.respond(res.locals.userId, questIdSchema.parse(req.params.questId), z.uuid().parse(req.params.ownerId), accept));
+  });
   router.post('/quests/:id/accept', requireUser, express.json({ limit: '4kb' }), async (req, res) => {
     z.object({}).strict().parse(req.body ?? {});
     res.json(await deps.quests.accept(res.locals.userId, questIdSchema.parse(req.params.id)));

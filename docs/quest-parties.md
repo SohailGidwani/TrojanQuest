@@ -1,7 +1,12 @@
 # Quest parties: backend spec
 
 **For:** Kartik (shared types, database, routes), with Sohail for the route wiring.
-**Status:** shipped in local demo mode on the client; live mode needs the server work below. The client hides the Invite button outside the demo (`partiesAvailable`).
+**Status:** demo UI and live backend are implemented. Apply migration `202611150006_quest_parties.sql` for the five authenticated routes below. Live client wiring is still pending; the client hides Invite outside the demo (`partiesAvailable`). Authoritative quest completion is still deferred, so there is no live reward claim endpoint.
+
+**Hosted setup (November 15):** migration 006 is applied and recorded on the
+team's TrojanQuest Supabase project. Read-only checks confirmed the reward
+columns, rejection of unverified RPC actors, and denial of public party reads.
+Other environments must apply it before running this backend version.
 
 ## The feature
 
@@ -113,3 +118,47 @@ To turn on live mode in `client/src/components/useCollection.ts`:
 6. Set `partiesAvailable` to `true`.
 
 The UI in `QuestsScreen.tsx` and `StickerBook.tsx` already renders parties, odds, upgraded rarity and the 2× badge.
+
+## Implemented backend details
+
+- The authenticated backend router mounts all five routes. Caller-selected owners,
+  statuses, roll results and extra body fields are rejected. Invitees respond for
+  themselves; an owner cannot mark a friend joined.
+- Membership uses the existing directed friend-book relationship. An inviter must
+  have a saved profile and an accepted quest. Joined members accept the owner's
+  immutable quest snapshot, without requiring Cal's file to be present again.
+  An incompatible previously accepted edition returns 409 rather than overwriting it.
+- Invited and joined rows reserve the three seats. Declines free seats; re-inviting
+  resets the timestamp/status. Repeated invites and identical responses are safe.
+- `quest_parties` stores the freeze snapshot. A quest-scoped advisory transaction
+  lock and party row locks serialize invitations, responses and future reward
+  inserts, including overlapping groups. Private tables have RLS and no browser
+  grants or Realtime publication.
+- A trusted future completion writer inserting a quest catch invokes a database
+  trigger: it derives rarity from the accepted reward's live catalogue definition,
+  takes the largest joined containing party (not the union), freezes all containing
+  parties, and saves one independent roll. Pending invites do not count. A unique
+  quest-reward index, duplicate-insert guard and update guard prevent outcome
+  rerolls. All joined participants can subsequently receive their independent
+  reward using the frozen size; they are not rewarded for another person's visits.
+- `rarity`, `copies` and `party_size` are returned for quest catches in own/friend
+  books. Normal spot/popup/org catch payloads retain their original shape.
+
+The trigger supplies party bonuses only. It does not decide whether a quest was
+completed, add a claim endpoint, auto-grant all members' rewards, or change the
+existing `/api/catch` rejection of quest-source requests. The completion writer
+must check the traveller's own required visits before inserting. The pure server
+rule reference in `server/src/db/party-rewards.ts` is tested against the shipped
+client's probability boundaries and rarity caps.
+
+Frontend integration also needs to replace live local-only quest acceptance with
+`POST /api/quests/:id/accept` and hydrate `GET /api/me/quests`. Do not enable live
+parties while acceptance and membership still come from browser storage. Keep
+the demo auto-accept timer in demo mode only; live invites need a real response.
+
+Tests cover route authentication/validation, RPC response privacy, reward-rule
+parity, and all six migrations in disposable PostgreSQL. The SQL fixture tests
+membership, capacity, private inboxes, overlapping-party sizing, automatic
+acceptance, frozen membership, persisted rolls and retries. PGlite uses one
+connection; simultaneous transactions and hosted authenticated users require
+an additional integration test. No test users are created in hosted Supabase.
