@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Catch, DemoState, Friend, Profile, Quest, Spot } from './types'
 import { addDemoVisit, awardCompletedQuests, parseAcceptedQuests, parseDemoState } from './collection'
 import type { AcceptedQuests } from './collection'
 import { stickerCatalogue } from './catalogue'
-import { canEarn } from './stickers'
+import { canEarn, rarityLabels } from './stickers'
+import { joinedFriends, maxPartySize, parseParties, parseRolls, rollReward } from './party'
+import type { RewardRoll, RewardRolls } from './party'
 import { demoFriendBooks, demoFriends, demoQuests, demoSpots, initialDemoState } from './mock'
 import { requestJSON, RequestError } from './api'
 
@@ -17,6 +19,24 @@ function readAccepted(): Record<string, AcceptedQuests> {
     return Object.fromEntries(Object.entries(data).map(([scope, value]) => [scope, parseAcceptedQuests(value)]))
   } catch { return {} }
 }
+// Quest parties and their reward rolls are demo-only until the server supports them (docs/quest-parties.md).
+const partiesKey = 'trojanquest:quest-parties:v1'
+const rollsKey = 'trojanquest:quest-rolls:v1'
+function readScoped<T>(key: string, parse: (value: unknown) => T): Record<string, T> {
+  try {
+    const data: unknown = JSON.parse(localStorage.getItem(key) ?? '{}')
+    if (!data || typeof data !== 'object' || Array.isArray(data)) return {}
+    return Object.fromEntries(Object.entries(data).map(([scope, value]) => [scope, parse(value)]))
+  } catch { return {} }
+}
+function rewardMessage(title: string, roll: RewardRoll) {
+  const tier = rarityLabels[roll.rarity]
+  if (!roll.partySize) return `Quest complete! “${title}” reward added.`
+  if (roll.bumped && roll.copies === 2) return `Party bonus! “${title}” upgraded to ${tier}, and you got 2 copies!`
+  if (roll.bumped) return `Party bonus! “${title}” upgraded to ${tier}.`
+  if (roll.copies === 2) return `Party bonus! 2× “${title}” stickers${roll.capped ? ` (already ${tier}, the top tier)` : ''}.`
+  return `Quest complete! “${title}” reward added. The party bonus didn’t land this time.`
+}
 function readDemo() { try { return parseDemoState(localStorage.getItem(storageKey)) ?? initialDemoState } catch { return initialDemoState } }
 interface RemoteData { spots: Spot[]; catches: Catch[]; quests: Quest[]; friends: Friend[] }
 const empty: RemoteData = { spots: [], catches: [], quests: [], friends: [] }
@@ -29,6 +49,13 @@ export function useCollection(accessToken?: string, profile?: Profile) {
   const [storageWarning, setStorageWarning] = useState(false)
   const [revision, setRevision] = useState(0)
   const [acceptedByScope, setAcceptedByScope] = useState(readAccepted)
+  const [partiesByScope, setPartiesByScope] = useState(() => readScoped(partiesKey, parseParties))
+  const [rollsByScope, setRollsByScope] = useState(() => readScoped(rollsKey, parseRolls))
+  const joinTimers = useRef<number[]>([])
+  useEffect(() => () => joinTimers.current.forEach(timer => window.clearTimeout(timer)), [])
+  useEffect(() => {
+    try { localStorage.setItem(partiesKey, JSON.stringify(partiesByScope)); localStorage.setItem(rollsKey, JSON.stringify(rollsByScope)) } catch { setStorageWarning(true) }
+  }, [partiesByScope, rollsByScope])
   useEffect(() => {
     const controller = new AbortController()
     async function load() {
@@ -61,6 +88,8 @@ export function useCollection(accessToken?: string, profile?: Profile) {
       localStorage.setItem(acceptedKey, JSON.stringify(withoutDemo))
       setStorageWarning(false)
     } catch { setStorageWarning(true) }
+    joinTimers.current.forEach(timer => window.clearTimeout(timer)); joinTimers.current = []
+    setPartiesByScope(previous => ({ ...previous, demo: {} })); setRollsByScope(previous => ({ ...previous, demo: {} }))
     setDemo(initialDemoState); setAcceptedByScope(withoutDemo); setMessage('')
   }
   const isDemo = mode === 'demo'
@@ -71,12 +100,59 @@ export function useCollection(accessToken?: string, profile?: Profile) {
   const friends = isDemo ? demoFriends.filter(friend => demo.friendIds.includes(friend.user_id)) : remote.friends
   const acceptedScope = isDemo ? 'demo' : currentProfile?.friend_code ?? 'account'
   const accepted = acceptedByScope[acceptedScope] ?? {}
+  const parties = partiesByScope[acceptedScope] ?? {}
+  const rolls = rollsByScope[acceptedScope] ?? {}
+  // Rolls the party bonus for every quest reward that was just added; returns the toast for the last one.
+  function rollNewRewards(before: Catch[], after: Catch[]) {
+    const fresh = after.filter(c => c.source === 'quest' && !before.some(previous => previous.id === c.id))
+    const now = new Date().toISOString()
+    const added: RewardRolls = {}
+    let text = ''
+    for (const reward of fresh) {
+      const quest = quests.find(item => item.id === reward.source_id)
+      if (!quest || rolls[quest.id]) continue
+      const roll = rollReward(stickerCatalogue.get(quest.reward_sticker_key)?.rarity ?? 'rare', joinedFriends(parties[quest.id]).length, Math.random, now)
+      added[quest.id] = roll
+      text = rewardMessage(quest.title, roll)
+    }
+    if (Object.keys(added).length) setRollsByScope(previous => ({ ...previous, [acceptedScope]: { ...previous[acceptedScope], ...added } }))
+    return text
+  }
   function visit(id: string, variant: 'morning' | 'day' | 'night') {
     if (!isDemo) return
     const spot = spots.find(item => item.id === id)
     if (spot && !canEarn(stickerCatalogue, spot.sticker_key)) { setMessage('This exclusive sticker isn’t available right now.'); return }
-    saveDemo(addDemoVisit(demo, id, variant, spots, quests.filter(quest => accepted[quest.id]), undefined, stickerCatalogue))
-    setMessage('Demo sticker added. Your quest progress is up to date.')
+    const next = addDemoVisit(demo, id, variant, spots, quests.filter(quest => accepted[quest.id]), undefined, stickerCatalogue)
+    saveDemo(next)
+    setMessage(rollNewRewards(demo.catches, next.catches) || 'Demo sticker added. Your quest progress is up to date.')
+  }
+  const questDone = (questId: string) => catches.some(c => c.source === 'quest' && c.source_id === questId)
+  function setPartyMember(questId: string, friendId: string, status: 'invited' | 'joined' | null, onlyIf?: 'invited') {
+    setPartiesByScope(previous => {
+      const party = { ...previous[acceptedScope]?.[questId] }
+      if (onlyIf && party[friendId] !== onlyIf) return previous
+      if (status) party[friendId] = status
+      else delete party[friendId]
+      return { ...previous, [acceptedScope]: { ...previous[acceptedScope], [questId]: party } }
+    })
+  }
+  /** Invites a friend to an accepted, unfinished quest. Parties hold at most three friends. */
+  function inviteFriend(questId: string, friendId: string) {
+    const quest = quests.find(item => item.id === questId), friend = friends.find(person => person.user_id === friendId)
+    if (!isDemo || !quest || !friend || !accepted[questId] || questDone(questId)) return
+    const party = parties[questId] ?? {}
+    if (party[friendId] || Object.keys(party).length >= maxPartySize) return
+    setPartyMember(questId, friendId, 'invited')
+    setMessage(`Quest invite sent to ${friend.display_name}.`)
+    // Demo friends accept after a moment; real invites wait for the friend to respond (docs/quest-parties.md).
+    joinTimers.current.push(window.setTimeout(() => {
+      setPartyMember(questId, friendId, 'joined', 'invited')
+      setMessage(`${friend.display_name} joined “${quest.title}”!`)
+    }, 1500))
+  }
+  function removeFromParty(questId: string, friendId: string) {
+    if (!isDemo || questDone(questId)) return
+    setPartyMember(questId, friendId, null)
   }
   function acceptQuest(id: string) {
     const quest = quests.find(item => item.id === id)
@@ -89,7 +165,7 @@ export function useCollection(accessToken?: string, profile?: Profile) {
     // Places visited before accepting still count, so an already-finished quest is rewarded right away.
     if (isDemo) {
       const catches = awardCompletedQuests(demo.catches, [quest], now, stickerCatalogue)
-      if (catches.length !== demo.catches.length) { saveDemo({ ...demo, catches }); setMessage(`Quest complete! “${quest.title}” reward added.`); return }
+      if (catches.length !== demo.catches.length) { saveDemo({ ...demo, catches }); setMessage(rollNewRewards(demo.catches, catches) || `Quest complete! “${quest.title}” reward added.`); return }
     }
     setMessage(`Quest accepted: “${quest.title}”. Visit its places in any order.`)
   }
@@ -114,6 +190,6 @@ export function useCollection(accessToken?: string, profile?: Profile) {
     }
     return requestJSON<Catch[]>(`/api/friends/${encodeURIComponent(id)}/catches`, { accessToken, signal })
   }, [isDemo, demo.friendIds, accessToken])
-  return { mode, isDemo, profile: currentProfile, spots, catches, quests, friends, errors, message, setMessage, storageWarning, visit, accepted, acceptQuest, addFriend, friendBook, resetDemo, accessToken, reload: () => setRevision(value => value + 1) }
+  return { mode, isDemo, profile: currentProfile, spots, catches, quests, friends, errors, message, setMessage, storageWarning, visit, accepted, acceptQuest, parties, rolls, inviteFriend, removeFromParty, partiesAvailable: isDemo, addFriend, friendBook, resetDemo, accessToken, reload: () => setRevision(value => value + 1) }
 }
 export type CollectionData = ReturnType<typeof useCollection>
