@@ -8,7 +8,7 @@ Use `npm run dev:demo` and open http://127.0.0.1:5173/dev/ai to exercise the rea
 
 ## Kartik
 
-AI code imports no SQL and does not modify your folders. Provide:
+Kartik's backend foundation is now present and its shared types/helpers are integrated. AI code imports no SQL and does not modify the data folders. The mounted interfaces are:
 
 1. `server/src/routes/index.ts`: default-export an Express Router, using `/spots`, `/catch`, `/popups/:id/confirm`, etc. paths (no `/api` prefix). Sohail's entry point mounts it at `/api` when present at startup. Restart after first adding it.
 2. `server/src/db/popups.ts`: named exports matching `PopupStore` in `server/src/ai/contracts.ts`:
@@ -30,9 +30,9 @@ findNearbyPopup(input: {
 
 `Popup` is the exact plan response shape. `created_at` is needed to enforce the two-hour rule; return it as lookup metadata from your timestamps. Search only matching normalized brand, within 100 m, creation at/after `since`, live and unexpired. The AI service rechecks those constraints. Realtime should publish persisted new popups normally. Never return reporter identity to the client.
 
-The two-helper interface cannot make the read-then-insert atomic across concurrent reports; the DB owner should make creation deduplicate transactionally before a busy public launch. The service currently guarantees sequential report deduplication. If the `reports` table needs per-report verdict records, we need one additional agreed helper; it is not silently implemented in the AI folder.
+Kartik's create_popup RPC now locks and rechecks duplicate creation transactionally. If a concurrent creation returns an existing row, the current two-helper API can still report merged_into: null; clients should upsert pins by ID. New accepted popups create a private reports entry; rejected/merged audit records still need an agreed helper and are not silently implemented in the AI folder.
 
-Provide `shared/types.ts`; Sohail's temporary AI boundary types are in `server/src/ai/contracts.ts`. They don't overwrite the shared contract. No service-role key is used to verify users. `authenticate(token)` in `server/src/ai/integrations.ts` uses Supabase `auth.getUser(token)` and requires a confirmed exact `@usc.edu` email, rejecting anonymous users. Reuse this check for protected backend actions. Enforce the same policy in RLS for direct client database access; the AI guard cannot protect Supabase's Data API. Account creation can be restricted with Supabase's Before User Created domain hook.
+`shared/types.ts` is now available; AI contracts and frontend types re-export its types, while runtime model/content validation stays in the AI folder. No service-role key is used to verify users. `authenticate(token)` in `server/src/ai/integrations.ts` uses Supabase `auth.getUser(token)` and requires a confirmed exact `@usc.edu` email, rejecting anonymous users. Reuse this check for protected backend actions. Enforce the same policy in RLS for direct client database access; the AI guard cannot protect Supabase's Data API. Account creation can be restricted with Supabase's Before User Created domain hook.
 
 ## Cal
 
@@ -54,6 +54,6 @@ Guide answers are source excerpts, with `{title, url}` citations. Quests return 
 
 - In-memory rate limits reset on restart and are per process; move to shared storage for multiple instances. Limits currently apply per verified USC account.
 - For remote hosting, need a privately reachable Ollama host; the local default works only when Express and Ollama share a host.
-- Need real Supabase credentials, Kartik's helpers/routes and Cal's content before end-to-end photo → database → Realtime can be verified.
+- Kartik's helpers and read routes are present. Hosted migrations, server-side database credentials, Cal's content and remaining catch/friend write routes are still needed before end-to-end persistence and Realtime can be verified.
 - Need teammates' GitHub handles to invite them. No invitations or messages have been sent. No hosting provider is required for local development.
 - Rejected/malformed photos consume a report attempt. The service never persists image bytes; request bytes exist transiently during inference.

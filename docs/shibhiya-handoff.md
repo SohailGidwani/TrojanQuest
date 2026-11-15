@@ -26,9 +26,11 @@ To try a reward, open Philosophy Library and collect its day edition; it complet
 
 `components/CollectionApp.tsx` is a temporary preview shell mounted by the initial `App.tsx`. It does not edit Manaswi's `app`, `map`, `report` or `lib` folders. Mount the screens in the final shell when ready, or use `<CollectionApp accessToken={session.access_token} profile={{display_name, friend_code}} />` within a BrowserRouter. The entire account-scoped subtree resets when the access token changes; account A data cannot linger in account B's book, chat or dialogs.
 
-Temporary frontend contract types are in `components/types.ts`, not Kartik's shared file. `components/api.ts` is the preview's small HTTP boundary; replace it with Manaswi's shared API client when that exists.
+`components/types.ts` re-exports Kartik's `shared/types.ts` contract and adds only preview-specific types. `components/api.ts` is the preview's small HTTP boundary; replace it with Manaswi's shared API client when that exists.
 
-## Backend/content/art integration still needed
+## Backend/content/art integration status
+
+Kartik’s backend foundation landed during this work and was preserved by rebasing onto main. Its shared types, popup helpers and authenticated read routes are integrated; the root test command now includes his suites. No migrations were applied to the hosted project and no database credentials were changed. Remaining setup/write/friend/content work is listed below.
 
 | Feature | Expected input |
 | --- | --- |
@@ -48,7 +50,7 @@ Cal's sample replacements must include verified card text/tips/hours and real co
 
 ## Validation and media
 
-- 35 server tests and six frontend logic tests cover auth/demo boundaries, catalogue route, photo checks, deduplication, progress, rewards, filtering and corrupt demo storage.
+- 45 server/backend tests and six frontend logic tests cover auth/demo boundaries, catalogue route, photo checks, deduplication, progress, rewards, filtering and corrupt demo storage.
 - Browser checks: search/category/ownership; missing-place visit; one quest reward; reload persistence; invalid and valid friend code; read-only friend detail; native dialog Escape/focus; guide real missing-content response and test-only citation fixture; 390px mobile layouts and reachable chat composer.
 - Account-switch regression: before the session boundary fix, A's place remained visible after B's health request failed; after the fix, the old-place count was zero. The browser harness stayed outside production source.
 - TypeScript, lint and production build are required before publishing.

@@ -7,7 +7,7 @@
     "start": "node --import tsx --env-file-if-exists=../.env src/index.ts",
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test src/ai/*.test.ts"
+    "test": "node --import tsx --test src/ai/*.test.ts src/db/*.test.ts src/routes/*.test.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.0.0",

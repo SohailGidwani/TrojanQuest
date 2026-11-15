@@ -40,7 +40,7 @@ npm run build
 npm start
 ```
 
-After building, Express serves the client at http://localhost:3001. The collection/social screens are implemented; real data still needs Kartik's backend and Cal's content. `GET /api/health` is available without credentials. Normal operation requires a verified USC session; use the explicit local demo while sign-in is deferred.
+After building, Express serves the client at http://localhost:3001. The collection/social screens are implemented; live data still needs database setup, remaining catch/friend routes and Cal's content. `GET /api/health` is available without credentials. Normal operation requires a verified USC session; use the explicit local demo while sign-in is deferred.
 
 ## Sohail's implementation
 
