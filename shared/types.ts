@@ -61,6 +61,23 @@ export interface Friend { user_id: string; display_name: string; friend_code: st
 export interface Profile extends Friend {}
 export interface ApiErrorResponse { error: string }
 
+export interface Position { lat: number; lng: number }
+export interface CatchRequest extends Position { source: Source; source_id: string }
+export type CollectionFailureReason = 'too_far' | 'not_found' | 'not_started' | 'expired' | 'quest_not_available';
+export interface CollectionFailure { ok: false; reason: CollectionFailureReason }
+export type CatchResult = {
+  ok: true;
+  sticker: Sticker;
+  variant: Variant;
+  already_caught: boolean;
+} | CollectionFailure;
+export interface PopupConfirmation {
+  expires_at: string;
+  confirmations: number;
+  already_confirmed: boolean;
+}
+export type ConfirmPopupResult = ({ ok: true } & PopupConfirmation) | CollectionFailure;
+
 // Quest ordering, photo proof, avatars and wagers are deliberately undecided.
 export interface PopupRecord extends Popup { created_at: string }
 export type NewPopup = Omit<Popup, 'id'> & { reporter_id: string };
