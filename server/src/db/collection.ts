@@ -13,6 +13,8 @@ export interface CollectionStore {
 function actionFailure(error: { code?: string } | null): never {
   if (error?.code === '42501') throw new ApiError(403, 'A verified USC account is required for this action.');
   if (error?.code === '22023' || error?.code === '22P02') throw new ApiError(400, 'Invalid request fields.');
+  if (error?.code === 'PT410') throw new ApiError(410, 'This challenge has ended or is no longer live.');
+  if (error?.code === 'PT409') throw new ApiError(409, 'This challenge is not available yet.');
   if (error?.code === 'PT503') throw new ApiError(503, 'Seed the sticker catalogue before collecting this sticker.');
   databaseFailure(error);
 }

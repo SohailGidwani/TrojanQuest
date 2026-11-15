@@ -1,5 +1,11 @@
 # Challenges: backend spec
 
+**Backend implementation update (Nov 15):** shared types, validation, private org/reviewer provisioning,
+challenge CRUD/review/acceptance, expiry guards and quest completion are implemented in migrations 007–008
+and the data routes. They are not yet applied to hosted Supabase. See
+[the API/setup and frontend handoff](challenges-backend-handoff.md). The original design below remains the
+feature specification; live client wiring and AI prescreening remain with their owners.
+
 **For:** Kartik (shared types, database, routes) and Sohail (the AI sticker designer and server wiring).
 **Status:** works in local demo mode. The demo user can post as themselves or as "Demo Student Org", and challenges are saved in the browser. With real accounts, the Challenges tab shows a locked "Post a challenge" card until the server supports challenges.
 

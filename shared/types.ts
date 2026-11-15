@@ -14,6 +14,8 @@ export interface StickerDefinition {
   lore?: string;
   available_from?: string;
   available_until?: string;
+  /** Background, highlight and outline, for designed challenge stickers. */
+  colors?: string[];
 }
 
 export interface Sticker extends Partial<StickerDefinition> {
@@ -75,6 +77,52 @@ export interface Quest {
 }
 export interface QuestAcceptance { quest_id: string; accepted_at: string }
 export interface QuestAcceptanceResult extends QuestAcceptance { already_accepted: boolean }
+export type ChallengeAuthor = 'student' | 'org';
+export type ChallengeStatus = 'pending' | 'live' | 'rejected' | 'archived';
+export type ChallengeArt = PopupStickerKey;
+export type ChallengePalette = [string, string, string];
+export interface ChallengeStop {
+  name: string;
+  lore: string;
+  place: { kind: 'campus'; spot_id: string } | ({ kind: 'point' } & Position);
+  art: ChallengeArt;
+  colors?: ChallengePalette;
+}
+export interface ChallengeReward {
+  name: string;
+  art: ChallengeArt;
+  rarity: 'common' | 'rare' | 'epic';
+  lore: string;
+  colors?: ChallengePalette;
+}
+export interface CreateChallengeRequest {
+  title: string;
+  blurb: string;
+  author: ChallengeAuthor;
+  org_id?: string;
+  days: number;
+  stops: ChallengeStop[];
+  reward: ChallengeReward;
+}
+/** UUID id expands to quest cq-<id>, pinned spots cq-<id>-<position>, reward cq-<id>-reward. */
+export interface Challenge extends Omit<CreateChallengeRequest, 'days'> {
+  id: string;
+  by: string;
+  author_user_id: string;
+  status: ChallengeStatus;
+  starts_at: string;
+  created_at: string;
+  ends_at: string;
+  review_note?: string;
+}
+export interface ChallengeOrg { id: string; name: string; role: 'admin' | 'member' }
+export interface ReviewChallengeRequest { status: 'live' | 'rejected'; reason?: string }
+export interface QuestCompletionResult {
+  quest_id: string;
+  already_completed: boolean;
+  catch: Catch;
+  sticker: Sticker;
+}
 export type QuestInviteStatus = 'invited' | 'joined' | 'declined';
 export interface QuestPartyMember { user_id: string; display_name: string; status: QuestInviteStatus }
 export interface QuestParty { quest_id: string; owner_id: string; members: QuestPartyMember[] }

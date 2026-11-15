@@ -61,17 +61,16 @@ Missing credentials, database helpers or content produce explicit errors rather 
 
 ## Backend work for Kartik
 
-**Quest parties: mostly done (PR #9).** Shared types, migration `202611150006_quest_parties.sql`, the five party routes and the server-side bonus roll (a database trigger matching `client/src/components/party.ts`) are in. Still open:
-- **A quest-completion writer.** The server must decide a traveller finished every required stop, then insert the quest reward catch, which lets the trigger roll the bonus. There's no live reward grant until this exists.
-- **Live client wiring, with the frontend.** Switch acceptance to `POST /api/quests/:id/accept` and `GET /api/me/quests`, call the party routes, show incoming invites, then set `partiesAvailable`.
+**Quest parties and completion: backend implemented.** PR #9 supplies persisted parties and reward bonuses. Migration `202611150007_quest_completion.sql` adds `POST /api/quests/:id/complete`: the server checks each traveller's own required visits before granting the one-time reward through that trigger. Existing visits count, matching current client progress; clients cannot choose the reward roll.
+- **Live client wiring, with the frontend.** Use `POST /api/quests/:id/accept`, `GET /api/me/quests`, the party routes and `/complete`, then refresh catches. Show incoming invites before enabling `partiesAvailable`.
 
 Details: [docs/quest-parties.md](docs/quest-parties.md).
 
-**Challenges: not started.** Challenges are limited-time quests posted by students and student orgs, working in the local demo. Live mode needs the following. Full spec: [docs/challenges.md](docs/challenges.md).
+**Challenges: backend implemented; hosted rollout and live client wiring pending.** Migration `202611150008_challenges.sql` and the authenticated routes provide the following. Full API and owner handoff: [docs/challenges-backend-handoff.md](docs/challenges-backend-handoff.md). Original feature spec: [docs/challenges.md](docs/challenges.md).
 
 - **Shared types**
-  - Add `Challenge`, `ChallengeStop` and `CreateChallengeRequest`, mirroring `CustomQuest` and `QuestDraft` in `client/src/components/customQuests.ts`.
-  - Add optional `colors` (background, highlight, outline) to `StickerDefinition`, for AI-designed stickers.
+  - `Challenge`, `ChallengeStop` and `CreateChallengeRequest` mirror the demo draft, with server-assigned UUIDs and review status.
+  - Optional `colors` (background, highlight, outline) persist through the catalogue, catches and seed importer.
 - **Migrations**
   - `challenges`: author kind, author or org, a review `status` (`pending | live | rejected | archived`), `starts_at` and `ends_at`.
   - `challenge_stops`: campus place or pin, name, lore, art, colors.
@@ -83,11 +82,14 @@ Details: [docs/quest-parties.md](docs/quest-parties.md).
   - reward rarity is Common, Rare or Epic only;
   - nothing can be accepted or earned after `ends_at`;
   - pinned stops use the same 50 m check as `POST /api/catch`;
-  - `accept_authored_quest` requires 3–5 stops, so challenges need their own acceptance path.
+  - `POST /api/challenges/:id/accept` supports 1–8 stops, including through party invites, without weakening official-quest validation.
 - **Routes**
   - `GET/POST /api/challenges`;
   - `DELETE /api/challenges/:id` (archives it; earned stickers stay with students);
   - `POST /api/challenges/:id/review` (team approval).
+  - `POST /api/challenges/:id/accept` and `GET /api/me/orgs`.
+
+**Rollout:** apply migrations 007–008 after 001–006 and provision the team-approved org/admin/reviewer rows. All submissions start pending, reviewers cannot approve their own, and archiving preserves earned stickers. No hosted migrations were applied by this code change. Frontend owners still need to connect the live Challenges tab; Sohail owns the automated AI prescreen integration. The demo is not silently upgraded to server persistence.
 
 The AI sticker designer (`POST /api/stickers/design`, in Sohail's `server/src/ai/`) is already built.
 
