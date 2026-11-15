@@ -4,7 +4,7 @@ Collect stickers, discover USC, meet other Trojans. Built with React/Vite, Expre
 
 ## Work without sign-in
 
-Sign-in/SMTP setup is paused. To test Sohail's AI features locally:
+The live app has USC email sign-in; sender/redirect settings must be configured for the deployed origin. To test without signing in:
 
 ```sh
 npm ci
@@ -61,8 +61,8 @@ Missing credentials, database helpers or content produce explicit errors rather 
 
 ## Backend work for Kartik
 
-**Quest parties and completion: backend implemented.** PR #9 supplies persisted parties and reward bonuses. Migration `202611150007_quest_completion.sql` adds `POST /api/quests/:id/complete`: the server checks each traveller's own required visits before granting the one-time reward through that trigger. Existing visits count, matching current client progress; clients cannot choose the reward roll.
-- **Live client wiring, with the frontend.** Use `POST /api/quests/:id/accept`, `GET /api/me/quests`, the party routes and `/complete`, then refresh catches. Show incoming invites before enabling `partiesAvailable`.
+**Quest parties and completion: backend and live client integrated.** PR #9 supplies persisted parties and reward bonuses. Migration `202611150007_quest_completion.sql` adds `POST /api/quests/:id/complete`: the server checks each traveller's own required visits before granting the one-time reward through that trigger. Existing visits count, matching current client progress; clients cannot choose the reward roll.
+- **Live client:** uses `POST /api/quests/:id/accept`, `GET /api/me/quests`, incoming invitations, the party routes and `/complete`, then refreshes saved catches. Live rewards are never minted in browser storage.
 
 Details: [docs/quest-parties.md](docs/quest-parties.md).
 
@@ -89,7 +89,7 @@ Details: [docs/quest-parties.md](docs/quest-parties.md).
   - `POST /api/challenges/:id/review` (team approval).
   - `POST /api/challenges/:id/accept` and `GET /api/me/orgs`.
 
-**Rollout:** migrations 007–008 are deployed. The live client now uses persisted acceptances, incoming invitations, party membership and server-written rewards, and supports challenge submission, review, archive and approved-org selection. Migration 009 adds recorded AI screening and blocks publication until screening passes; independent human review remains required. See [integration and deployment record](docs/live-integration-20261115.md) for deployment status, account provisioning and validation. Explicit demo mode still keeps its own browser-local data.
+**Rollout:** migrations 007–009 are deployed and verified; the starter catalogue and initial TrojanQuest Team admin/reviewer roles are provisioned. The live client now uses persisted acceptances, incoming invitations, party membership and server-written rewards, and supports challenge submission, review, archive and approved-org selection. Migration 009 adds recorded AI screening and blocks publication until screening passes; independent human review remains required. See [integration and deployment record](docs/live-integration-20261115.md) for deployment status, account provisioning and validation. Explicit demo mode still keeps its own browser-local data.
 
 The AI sticker designer (`POST /api/stickers/design`, in Sohail's `server/src/ai/`) is already built.
 

@@ -36,3 +36,18 @@ The explicit `scripts/live-ui-fixture.ts --local-fixture` server binds loopback 
 ## Deployment state
 
 Migrations 007–008 were already applied and verified in [the earlier rollout](hosted-rollout-20261115.md). Migration 009, the content import, initial team roles and the final merge are recorded below when completed. Live user email delivery, a two-real-account walkthrough, physical GPS calibration and a hosted application release are separate from local tests and database deployment; they are not claimed by the fixture.
+
+
+## Completed rollout
+
+- Implementation PR [#13](https://github.com/SohailGidwani/TrojanQuest/pull/13) merged at `5275da759339a14a2c1b82cb2c68d3fb395d192f`.
+- Hosted project `bzdcfiruylgrsvvkuneu`: migration 009 committed after the exact recorded 001–008 sequence. Seven post-deployment checks passed, including source matching, service-only screen recording and denial of the internal manual-review bypass.
+- Imported 25 sticker definitions and five starter places with the validated seeder. All five hosted place records match the source fields exactly. The four quests are served from the committed content file.
+- With explicit account-lookup and access-grant approval, provisioned the approved “TrojanQuest Team” organisation and Sohail's existing verified project-owner account as its admin and as a challenge reviewer. All three provisioning checks passed; application RPCs confirm that membership and reviewer queue access. No unrelated account was granted a role. Because there is one reviewer, Sohail's own submissions still require a second independently approved reviewer.
+- Started the actual authenticated application, serving the built client and real backend, at `http://127.0.0.1:3002/hunt`. Its browser showed the live sign-in form. The existing local-demo process on port 3001 was left untouched. No sign-in email was sent and no real account was impersonated for a product walkthrough.
+- Real local Ollama screening/design checks passed after installing the configured model. No private server key is present in the built client JavaScript.
+- The full validation remains 193 passing tests, server typecheck, production build, both PostgreSQL suites and the two-account browser fixture. A review caught and removed an intermediate client change that would have overwritten base reward metadata with a rolled rarity; the final code reads rolled outcomes only from saved catches. Archived challenge rewards retain their saved rarity and copies even after the challenge leaves the playable list.
+
+## Hosting boundary
+
+No Replit target URL/configuration or GitHub deployment exists in this checkout, and the available Replit connector is disabled by the administrator. No hosted application release is claimed. A remote host needs the merged code, its private environment, a reachable configured Ollama model, and Supabase sender/redirect settings for that exact origin. The laptop Ollama service is not automatically reachable from Replit, and no public tunnel or paid hosting was created. Physical GPS calibration and a walkthrough using two real USC sessions remain to be performed.
