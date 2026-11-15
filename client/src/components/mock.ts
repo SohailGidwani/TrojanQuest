@@ -1,7 +1,8 @@
 import type { Catch, Category, DemoState, Friend, Quest, Spot } from './types'
 import { addDemoVisit } from './collection'
 
-// shortcut: clearly labeled preview content until Cal's catalogue and Kartik's APIs land.
+// Bovard pin: USC venue listing https://calendar.usc.edu/bovard_auditorium_adm (geo metadata).
+// shortcut: other preview coordinates are illustrative; replace them with Cal's verified catalogue.
 const places: [string, string, Category, string][] = [
   ['leavey', 'Leavey Library', 'study', 'book'], ['doheny', 'Doheny Library', 'study', 'book'], ['philosophy', 'Philosophy Library', 'study', 'star'],
   ['village', 'USC Village', 'eat', 'bowl'], ['campus-center', 'Tutor Campus Center', 'eat', 'bubble'], ['mccarthy', 'McCarthy Quad', 'hangout', 'flag'],
@@ -10,7 +11,7 @@ const places: [string, string, Category, string][] = [
   ['tutoring', 'Tutoring Resources', 'essentials', 'book'], ['fertitta', 'Fertitta Hall', 'study', 'bolt'], ['tutor', 'Ronald Tutor Hall', 'hangout', 'star'],
 ]
 export const demoSpots: Spot[] = places.map(([id, name, category, sticker_key]) => ({
-  id, name, category, sticker_key, lat: 34.0257, lng: -118.2856,
+  id, name, category, sticker_key, lat: id === 'bovard' ? 34.020914 : 34.0257, lng: id === 'bovard' ? -118.285537 : -118.2856,
   card_text: 'A new corner of campus for your collection. This is a sample card; verified details and opening hours will come with the campus catalogue.',
   tip: 'Come back in the morning, afternoon, or evening to collect a different time-of-day edition.',
 }))

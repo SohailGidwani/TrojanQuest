@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "test": "node --import tsx --test src/components/collection.test.ts"
+    "test": "node --import tsx --test src/components/collection.test.ts src/map/navigation.test.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.0.0",

@@ -12,7 +12,11 @@ ollama pull qwen3-vl:4b-instruct
 npm run dev:demo
 ```
 
-Keep Ollama running. Open http://127.0.0.1:5173 for the sticker book, quests, friends and guide preview. Demo visits and friend codes work without sign-in; the clearly labeled collection uses sample content and browser-local progress. Try a day visit to Philosophy Library to finish a quest, and TQRINA to add a friend. See [the frontend handoff](docs/shibhiya-handoff.md) and [the short walkthrough](docs/previews/collection-walkthrough.mp4).
+Keep Ollama running. Open http://127.0.0.1:5173 for the clue-led campus hunt, sticker book, quests, friends and guide preview. Your first clue leads to Bovard Auditorium. Click **Start finding** for browser GPS, or **Try a simulated walk** → **At the venue** to test from your room. A fresh, accurate nearby fix unlocks its time-of-day sticker; demo collection stays in this browser. Try a day visit to Philosophy Library to finish a demo quest, and TQRINA to add a friend. See [the hunt notes](docs/hunt-plan.md), [the frontend handoff](docs/shibhiya-handoff.md) and [the short collection walkthrough](docs/previews/collection-walkthrough.mp4).
+
+`npm run dev` and `npm run dev:demo` use a Node launcher for Windows, macOS and Linux; there are no shell-specific environment assignments and no new dependency. Normal startup keeps authentication. Demo startup stays loopback-only.
+
+The hunt displays approximate distance and a north-up bearing, not phone-relative precision finding. It needs location permission and HTTPS on a real phone (localhost works on this computer). Accuracy must be ±25 m or better, the fix must be at most 30 seconds old, and distance plus uncertainty must fit within 50 m. Live collection still goes through Kartik's authoritative `/api/catch` route. No location trail is stored; OpenStreetMap tiles load only after GPS or simulation is enabled.
 
 The separate AI workbench remains at http://127.0.0.1:5173/dev/ai. Upload a pop-up photo to generate a sticker and temporary pin; report it again to test merging, or try an unrelated photo to test rejection. The real guide still needs Cal's saved USC pages; its UI displays a clear unavailable state until they exist.
 
@@ -40,7 +44,7 @@ npm run build
 npm start
 ```
 
-After building, Express serves the client at http://localhost:3001. The collection/social screens are implemented; live data still needs database setup, remaining catch/friend routes and Cal's content. `GET /api/health` is available without credentials. Normal operation requires a verified USC session; use the explicit local demo while sign-in is deferred.
+After building, Express serves the client at http://localhost:3001. The hunt and collection/social screens are implemented; Kartik's catch, confirmation, profile and friend routes are now merged. Live data still needs the three hosted migrations, private server-side database credentials and Cal's content. `GET /api/health` is available without credentials. Normal operation requires a verified USC session; use the explicit local demo while sign-in is deferred.
 
 ## Sohail's implementation
 
