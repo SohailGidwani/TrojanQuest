@@ -89,7 +89,7 @@ Details: [docs/quest-parties.md](docs/quest-parties.md).
   - `POST /api/challenges/:id/review` (team approval).
   - `POST /api/challenges/:id/accept` and `GET /api/me/orgs`.
 
-**Rollout:** apply migrations 007–008 after 001–006 and provision the team-approved org/admin/reviewer rows. All submissions start pending, reviewers cannot approve their own, and archiving preserves earned stickers. No hosted migrations were applied by this code change. Frontend owners still need to connect the live Challenges tab; Sohail owns the automated AI prescreen integration. The demo is not silently upgraded to server persistence.
+**Rollout:** apply migrations 007–008 after 001–006 and provision the team-approved org/admin/reviewer rows. All submissions start pending, reviewers cannot approve their own, and archiving preserves earned stickers. Hosted migrations 007–008 were applied and verified on 2026-11-15; see [rollout verification](docs/hosted-rollout-20261115.md). Frontend owners still need to connect the live Challenges tab; Sohail owns the automated AI prescreen integration. The demo is not silently upgraded to server persistence.
 
 The AI sticker designer (`POST /api/stickers/design`, in Sohail's `server/src/ai/`) is already built.
 
