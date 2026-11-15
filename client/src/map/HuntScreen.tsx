@@ -12,6 +12,7 @@ import { requestJSON } from '../components/api'
 import { campusVariant, compassDirection, proximity } from './navigation'
 import { useLocation } from './useLocation'
 import { HuntMap } from './HuntMap'
+import { WelcomeScreen } from './WelcomeScreen'
 import './hunt.css'
 
 type HuntSource = 'off' | 'gps' | 'simulation'
@@ -71,6 +72,7 @@ export function HuntScreen({ data }: { data: CollectionData }) {
   const [simulatedDistance, setSimulatedDistance] = useState(200)
   const [selected, setSelected] = useState<string | null>(savedTrail)
   const [choosing, setChoosing] = useState(false)
+  const [begun, setBegun] = useState(false)
   const [revisit, setRevisit] = useState<string | null>(null)
   const [confirmed, setConfirmed] = useState<string[]>([])
   const [celebration, setCelebration] = useState<(Spot & { variant: Variant; training: boolean }) | null>(null)
@@ -91,6 +93,7 @@ export function HuntScreen({ data }: { data: CollectionData }) {
     if (!trained && first?.id === spot.id) { setSelected(null); setChoosing(true) }
   }
   const tracking = { gps, source, setSource, simulatedDistance, setSimulatedDistance }
+  if (!trained && !begun) return <WelcomeScreen onBegin={() => setBegun(true)}/>
   if (celebration) return <section className="discovery-celebration"><span className="celebration-stars" aria-hidden="true">✦ ✧ ✦</span><StickerImage stickerKey={celebration.sticker_key} name={celebration.name} variant={celebration.variant} size={180}/><span className="small-label">{celebration.training ? 'Training wheels off' : 'Another story for your book'}</span><h1>{celebration.training ? 'You found your feet.' : 'Look what you found.'}</h1><h2>{celebration.name}</h2><p>{celebration.training ? 'Everyone starts here. Where you go next is entirely up to you.' : 'Your trail progress is saved. Keep going, or take a completely different turn.'}</p><button className="button primary" onClick={() => setCelebration(null)}>{celebration.training ? 'Choose my next adventure' : 'Keep exploring'}<Icon name="arrow"/></button><button className="text-button" onClick={() => { setCelebration(null); setChoosing(true) }}>Show all trails</button><Link className="text-button" to="/stickers">Peek at my sticker book</Link></section>
   if (trained && (choosing || !discovery)) return <><PageHeading title="What catches your curiosity?">No wrong turns here. Pick a clue, switch trails whenever you like.</PageHeading><div className="training-complete"><Icon name="check"/><span>Bovard discovered. Your campus adventure is officially yours.</span></div><div className="trail-choices">{trails.map(trail => {
     const stops = trail.stops.map(clue => data.spots.find(spot => clue.match.test(spot.name)))

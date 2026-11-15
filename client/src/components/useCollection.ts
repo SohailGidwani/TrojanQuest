@@ -40,6 +40,14 @@ export function useCollection(accessToken?: string, profile?: Profile) {
     setDemo(next)
     try { localStorage.setItem(storageKey, JSON.stringify(next)); setStorageWarning(false) } catch { setStorageWarning(true) }
   }
+  function resetDemo() {
+    if (mode !== 'demo') return
+    try {
+      for (const key of ['trojanquest:collection-demo:v1', storageKey, 'trojanquest:trail:v1']) localStorage.removeItem(key)
+      setStorageWarning(false)
+    } catch { setStorageWarning(true) }
+    setDemo(initialDemoState); setMessage('')
+  }
   const isDemo = mode === 'demo'
   const currentProfile = isDemo ? { display_name: 'Sohail', friend_code: 'TQSOHAIL' } : profile
   const spots = isDemo ? demoSpots : remote.spots
@@ -72,6 +80,6 @@ export function useCollection(accessToken?: string, profile?: Profile) {
     }
     return requestJSON<Catch[]>(`/api/friends/${encodeURIComponent(id)}/catches`, { accessToken, signal })
   }, [isDemo, demo.friendIds, accessToken])
-  return { mode, isDemo, profile: currentProfile, spots, catches, quests, friends, errors, message, setMessage, storageWarning, visit, addFriend, friendBook, accessToken, reload: () => setRevision(value => value + 1) }
+  return { mode, isDemo, profile: currentProfile, spots, catches, quests, friends, errors, message, setMessage, storageWarning, visit, addFriend, friendBook, resetDemo, accessToken, reload: () => setRevision(value => value + 1) }
 }
 export type CollectionData = ReturnType<typeof useCollection>

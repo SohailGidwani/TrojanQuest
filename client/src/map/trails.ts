@@ -1,8 +1,12 @@
-import type { Spot, Position } from '../../../shared/types'
+import type { Spot, Position, Catch } from '../../../shared/types'
 import { proximity } from './navigation'
 import type { LocationFix } from './navigation'
 export interface Clue { match: RegExp; title: string; text: string; hint: string; source: string }
 export const tutorial: Clue = { match: /bovard.*(auditorium|administration)/i, title: 'I hold the stage, but I’m not a classroom.', text: 'Find the place where the curtain rises and campus comes together. The promenade will lead you toward the applause.', hint: 'Look for the auditorium on Trousdale Parkway. You don’t need to go inside.', source: 'https://calendar.usc.edu/bovard_auditorium_adm' }
+export function tutorialComplete(spots: Spot[], catches: Pick<Catch, 'source' | 'source_id'>[]) {
+ const first = spots.find(spot => tutorial.match.test(spot.name))
+ return !!first && catches.some(item => item.source === 'spot' && item.source_id === first.id)
+}
 export const trails: { id: string; title: string; teaser: string; key: string; stops: Clue[] }[] = [
  { id:'libraries',title:'Between the pages',teaser:'A first chapter, a quiet corner, and your next favorite study spot.',key:'book',stops:[
   {match:/leavey/i,title:'A new chapter begins where Trojans come to focus.',text:'Find the library that shares its name with Thomas and Dorothy. Your first page is waiting.',hint:'Look for Leavey Library. Discover it from the public path outside.',source:'https://libraries.usc.edu/locations/leavey-library'},

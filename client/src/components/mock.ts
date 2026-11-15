@@ -37,4 +37,4 @@ function catchesFor(ids: string[]): Catch[] {
 export const demoFriendBooks: Record<string, Catch[]> = {
   maya: catchesFor(demoSpots.map(s => s.id)), rina: catchesFor(['leavey', 'doheny', 'village', 'alumni', 'career', 'cultural', 'tutor', 'mccarthy']), leo: catchesFor(['health', 'career', 'cultural', 'bovard']),
 }
-export const initialDemoState: DemoState = { catches: [], friendIds: ['maya'] }
+export const initialDemoState: DemoState = { catches: [], friendIds: [] }

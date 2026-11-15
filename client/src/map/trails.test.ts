@@ -1,7 +1,14 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { nextDiscovery, trails, nearbyMapVisible } from './trails'
+import { nextDiscovery, trails, nearbyMapVisible, tutorialComplete } from './trails'
 import { demoSpots } from '../components/mock'
+test('only a Bovard spot catch unlocks the rest of the app', () => {
+  assert.equal(tutorialComplete(demoSpots, []), false)
+  assert.equal(tutorialComplete(demoSpots, [{ source: 'spot', source_id: 'leavey' }]), false)
+  assert.equal(tutorialComplete(demoSpots, [{ source: 'quest', source_id: 'bovard' }]), false)
+  assert.equal(tutorialComplete([], [{ source: 'spot', source_id: 'bovard' }]), false)
+  assert.equal(tutorialComplete(demoSpots, [{ source: 'spot', source_id: 'bovard' }]), true)
+})
 test('all new players must finish Bovard before choosing another trail', () => {
   assert.equal(nextDiscovery(demoSpots, [], 'libraries')?.spot.id, 'bovard')
   assert.equal(nextDiscovery(demoSpots, ['bovard'], null), null)

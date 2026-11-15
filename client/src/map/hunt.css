@@ -55,6 +55,29 @@
 @media(max-width:900px) { .hunt-layout { grid-template-columns:1fr; } .hunt-clue { display:block; } .hunt-clue h2 { max-width:none; } .mystery-sticker { padding:15px 0; } .finder { max-width:none; } }
 @media(max-width:520px) { .hunt-layout { gap:17px; } .hunt-clue,.finder { padding:22px; } .hunt-number { flex-direction:row; font-size:10px; align-items:flex-start; } .hunt-number>span:last-child { font-size:10px; max-width:128px; line-height:1.5; } .hunt-clue h2 { font-size:28px; } .hunt-clue>p { font-size:12px; } .finder-dial { width:185px; height:185px; } .direction-arrow { inset:38px; width:107px; height:107px; } .finder-distance strong { font-size:40px; } .hunt-map { height:290px; } .sidebar nav .nav-item { padding-left:4px; padding-right:4px; font-size:10px; } }
 .finder { scroll-margin-top:90px; }
+.orientation-mode .main-column { margin-left:0; }
+.orientation-mode .page-content { max-width:1100px; margin:0 auto; padding-bottom:30px; }
+.orientation-mode .topbar { justify-content:space-between; }
+.orientation-mode .topbar:before { content:none; }
+.orientation-mode .topbar-right { display:none; }
+.orientation-brand { font-size:22px; font-weight:850; letter-spacing:-1px; }
+.orientation-brand>span { color:#8d1836; }
+.demo-banner .demo-reset { margin-left:auto; flex-shrink:0; font-size:11px; gap:6px; }
+.orientation-welcome { display:grid; grid-template-columns:1.1fr 1fr; align-items:center; gap:64px; padding:45px 0 35px; }
+.welcome-eyebrow { display:block; color:#8d1836; font-size:11px; font-weight:750; text-transform:uppercase; letter-spacing:1.7px; margin-bottom:25px; }
+.welcome-copy h1 { font-size:clamp(38px,4.5vw,59px); line-height:1.08; letter-spacing:-2.7px; margin-bottom:25px; }
+.welcome-copy>p { color:#6b6b6a; font-size:15px; line-height:1.9; max-width:37ch; margin-bottom:18px; }
+.welcome-copy strong { color:#634b42; font-weight:650; }
+.welcome-copy>.button { margin-top:13px; padding:16px 23px; font-size:14px; }
+.welcome-copy>.welcome-permission { display:flex; gap:8px; align-items:center; font-size:10px; margin-top:18px; color:#747971; max-width:none; }
+.orientation-ticket { position:relative; padding:25px 28px 0; background:#fff8e8; border:1px solid #e7d9b8; border-radius:16px; color:#846d44; }
+.ticket-top { display:flex; justify-content:space-between; align-items:center; font-size:10px; letter-spacing:1px; text-transform:uppercase; }
+.bovard-drawing { display:block; width:100%; margin:20px 0 25px; }
+.ticket-number { font-size:10px; text-transform:uppercase; letter-spacing:1.5px; }
+.orientation-ticket h2 { font-family:Georgia,serif; font-size:29px; font-weight:400; color:#6c432f; letter-spacing:-.5px; margin:12px 0 15px; }
+.orientation-ticket>p { font-size:12px; line-height:1.9; max-width:34ch; margin-bottom:24px; }
+.ticket-bottom { display:flex; align-items:center; gap:9px; border-top:1px dashed #d6c399; margin:0 -28px; padding:18px 28px; font-size:10px; }
+@media(max-width:750px) { .orientation-welcome { grid-template-columns:1fr; gap:30px; padding-top:20px; } .welcome-copy h1 { font-size:44px; letter-spacing:-2px; } .welcome-copy>p { max-width:none; font-size:14px; } .welcome-eyebrow { margin-bottom:18px; } .orientation-ticket { max-width:440px; width:100%; justify-self:center; } .orientation-mode .topbar { padding:17px 20px; height:auto; min-height:65px; } .orientation-mode .topbar>span { max-width:130px; text-align:right; font-size:9px; } .orientation-mode .topbar>span:first-of-type>svg { display:none; } .orientation-brand { font-size:21px; } }
 .hidden-finder { padding:45px 8px 30px; color:#78907d; }
 .hidden-finder h3 { font-size:22px; color:#365944; margin:18px 0 12px; }
 .hidden-finder p { font-size:12px; line-height:1.9; max-width:35ch; margin:0 auto; color:#6c7d70; }
