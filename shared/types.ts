@@ -61,6 +61,10 @@ export interface Catch {
   source_id: string;
   variant: Variant;
   caught_at: string;
+  rarity?: Rarity;
+  copies?: 1 | 2;
+  /** Other joined travellers; excludes the collector. */
+  party_size?: number;
 }
 export interface Quest {
   id: string;
@@ -71,6 +75,12 @@ export interface Quest {
 }
 export interface QuestAcceptance { quest_id: string; accepted_at: string }
 export interface QuestAcceptanceResult extends QuestAcceptance { already_accepted: boolean }
+export type QuestInviteStatus = 'invited' | 'joined' | 'declined';
+export interface QuestPartyMember { user_id: string; display_name: string; status: QuestInviteStatus }
+export interface QuestParty { quest_id: string; owner_id: string; members: QuestPartyMember[] }
+export interface QuestInvite { quest_id: string; quest_title: string; from: Friend; invited_at: string }
+export interface InviteToQuestRequest { friend_id: string }
+export interface RespondToQuestInviteRequest { accept: boolean }
 export interface Friend { user_id: string; display_name: string; friend_code: string }
 export interface Profile extends Friend {}
 export interface SaveProfileRequest { display_name: string }

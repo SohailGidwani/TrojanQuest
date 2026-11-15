@@ -4,6 +4,7 @@ import type { Catch, Friend, Profile, SaveProfileRequest } from '../../../shared
 import { ApiError } from '../ai/contracts.js';
 import { databaseFailure, getAdminClient } from './client.js';
 import { addFriendSchema, saveProfileSchema } from './schemas.js';
+import { publicCatch } from './catch-fields.js';
 
 export interface FriendsStore {
   profile(userId: string): Promise<Profile>;
@@ -63,7 +64,7 @@ export function createFriendsStore(client: () => SupabaseClient = getAdminClient
       const friend = z.uuid().parse(friendId);
       const data = await rpc('read_friend_catches', { p_user_id: actor, p_friend_id: friend });
       if (!Array.isArray(data)) databaseFailure(null);
-      return (data as Catch[]).map(({ id, source, source_id, variant, caught_at }) => ({ id, source, source_id, variant, caught_at }));
+      return (data as Catch[]).map(publicCatch);
     },
   };
 }

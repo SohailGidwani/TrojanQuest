@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Catch, OrgDrop, Popup, Spot } from '../../../shared/types.js';
 import { databaseFailure, getAdminClient } from './client.js';
+import { publicCatch } from './catch-fields.js';
 
 export interface ReadStore {
   spots(): Promise<Spot[]>;
@@ -33,9 +34,9 @@ export function createReadStore(client: () => SupabaseClient = getAdminClient): 
     },
     async catches(userId) {
       const { data, error } = await client().from('catches')
-        .select('id,source,source_id,variant,caught_at').eq('user_id', userId).order('caught_at', { ascending: false });
+        .select('id,source,source_id,variant,caught_at,rarity,copies,party_size').eq('user_id', userId).order('caught_at', { ascending: false });
       if (error) databaseFailure(error);
-      return data as Catch[];
+      return (data as Catch[]).map(publicCatch);
     },
   };
 }
