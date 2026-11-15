@@ -13,7 +13,7 @@ export function createReadStore(client: () => SupabaseClient = getAdminClient): 
   return {
     async spots() {
       const { data, error } = await client().from('spots')
-        .select('id,name,lat,lng,category,card_text,tip,sticker_key').order('name');
+        .select('id,name,lat,lng,category,card_text,tip,sticker_key').not('id', 'like', 'cq-%').order('name');
       if (error) databaseFailure(error);
       return data as Spot[];
     },

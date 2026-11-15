@@ -11,6 +11,8 @@ import { createStickerStore, type StickerStore } from '../db/stickers.js';
 import { createQuestStore, type QuestStore } from '../db/quests.js';
 import { createPartyStore, type PartyStore } from '../db/parties.js';
 import { inviteToQuestSchema, respondToQuestInviteSchema } from '../db/schemas.js';
+import { createChallengeStore, createChallengeSchema, challengeIdSchema, reviewChallengeSchema, type ChallengeStore } from '../db/challenges.js';
+import { createQuestRewardStore, type QuestRewardStore } from '../db/quest-rewards.js';
 
 export interface BackendDependencies {
   authenticate(token: string): Promise<string>;
@@ -20,6 +22,8 @@ export interface BackendDependencies {
   stickers: StickerStore;
   quests: QuestStore;
   parties: PartyStore;
+  challenges: ChallengeStore;
+  rewards: QuestRewardStore;
 }
 const failureDetails: Record<CollectionFailureReason, { status: number; error: string }> = {
   too_far: { status: 409, error: 'Move within 50 metres of this location.' },
@@ -31,7 +35,8 @@ const failureDetails: Record<CollectionFailureReason, { status: number; error: s
 export function createBackendRouter(overrides: Partial<BackendDependencies> = {}) {
   const deps: BackendDependencies = {
     authenticate, store: createReadStore(), actions: createCollectionStore(), social: createFriendsStore(),
-    stickers: createStickerStore(), quests: createQuestStore(), parties: createPartyStore(), ...overrides,
+    stickers: createStickerStore(), quests: createQuestStore(), parties: createPartyStore(),
+    challenges: createChallengeStore(), rewards: createQuestRewardStore(), ...overrides,
   };
   const router = Router();
   const requireUser: RequestHandler = async (req, res, next) => {
@@ -51,6 +56,28 @@ export function createBackendRouter(overrides: Partial<BackendDependencies> = {}
   router.get('/me/catches', async (_req, res) => { res.json(await deps.store.catches(res.locals.userId)); });
   router.get('/stickers', requireUser, async (_req, res) => { res.json(await deps.stickers.list()); });
   router.get('/me/quests', requireUser, async (_req, res) => { res.json(await deps.quests.list(res.locals.userId)); });
+  router.get('/me/orgs', requireUser, async (_req, res) => { res.json(await deps.challenges.orgs(res.locals.userId)); });
+  router.get('/challenges', requireUser, async (req, res) => {
+    const query = z.object({ review: z.enum(['true', 'false']).optional() }).strict().parse(req.query);
+    res.json(await deps.challenges.list(res.locals.userId, query.review === 'true'));
+  });
+  router.post('/challenges', requireUser, express.json({ limit: '24kb' }), async (req, res) => {
+    res.status(201).json(await deps.challenges.create(res.locals.userId, createChallengeSchema.parse(req.body)));
+  });
+  router.delete('/challenges/:id', requireUser, async (req, res) => {
+    res.json(await deps.challenges.archive(res.locals.userId, challengeIdSchema.parse(req.params.id)));
+  });
+  router.post('/challenges/:id/review', requireUser, express.json({ limit: '4kb' }), async (req, res) => {
+    res.json(await deps.challenges.review(res.locals.userId, challengeIdSchema.parse(req.params.id), reviewChallengeSchema.parse(req.body)));
+  });
+  router.post('/challenges/:id/accept', requireUser, express.json({ limit: '4kb' }), async (req, res) => {
+    z.object({}).strict().parse(req.body ?? {});
+    res.json(await deps.challenges.accept(res.locals.userId, challengeIdSchema.parse(req.params.id)));
+  });
+  router.post('/quests/:id/complete', requireUser, express.json({ limit: '4kb' }), async (req, res) => {
+    z.object({}).strict().parse(req.body ?? {});
+    res.json(await deps.rewards.complete(res.locals.userId, questIdSchema.parse(req.params.id)));
+  });
   router.get('/quests/:id/party', requireUser, async (req, res) => {
     res.json(await deps.parties.read(res.locals.userId, questIdSchema.parse(req.params.id)));
   });

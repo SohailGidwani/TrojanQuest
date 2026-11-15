@@ -69,6 +69,7 @@ export const stickerDefinitionSchema = z.object({
   image: z.string().max(255).regex(/^[A-Za-z0-9_][A-Za-z0-9_.-]*\.(svg|png|webp)$/i).optional(),
   art: z.enum(['bubble','star','book','bowl','leaf','bolt','heart','flag']).optional(),
   lore: z.string().trim().max(500).optional(),
+  colors: z.array(z.string().regex(/^#[0-9a-fA-F]{6}$/)).length(3).optional(),
   available_from: z.iso.datetime({ offset: true }).optional(),
   available_until: z.iso.datetime({ offset: true }).optional(),
 }).strict().superRefine((value, ctx) => {

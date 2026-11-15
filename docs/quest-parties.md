@@ -1,5 +1,10 @@
 # Quest parties: backend spec
 
+**Completion update (Nov 15):** migration 007 and `POST /api/quests/:id/complete` now implement the
+trusted own-visit completion writer. The existing party trigger still owns the saved one-time reward roll.
+Migration 008 extends acceptance and expiry checks to 1–8-stop challenges. These new migrations await hosted
+application; live client wiring is still required. See [the backend handoff](challenges-backend-handoff.md).
+
 **For:** Kartik (shared types, database, routes), with Sohail for the route wiring.
 **Status:** demo UI and live backend are implemented. Apply migration `202611150006_quest_parties.sql` for the five authenticated routes below. Live client wiring is still pending; the client hides Invite outside the demo (`partiesAvailable`). Authoritative quest completion is still deferred, so there is no live reward claim endpoint.
 
