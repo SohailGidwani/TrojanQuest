@@ -23,6 +23,8 @@ export const pixelIcons = {
   chat: grid(12, ['KKKKKKKKKKK', 'KWWWWWWWWWK', 'KWKKKKKKWWK', 'KWWWWWWWWWK', 'KWKKKKWWWWK', 'KWWWWWWWWWK', 'KKKWKKKKKKK', '..KWK', '..KK']),
   check: grid(12, ['', '', '.........KK', '........KWK', '.......KWK', '.KK...KWK', 'KWWK.KWK', '.KWWKWK', '..KWWK', '...KK']),
   chest: grid(12, ['', '.KKKKKKKKKK', 'KYYYYYYYYYYK', 'KyyyyyyyyyyK', 'KKKKKKKKKKKK', 'KYYYYKKYYYYK', 'KYYYYKKYYYYK', 'KYYYYYYYYYYK', 'KyyyyyyyyyyK', 'KKKKKKKKKKKK']),
+  // A square sticker with a star on it and its corner peeling up.
+  sticker: grid(12, ['KKKKKKKKKKK', 'KBBBBBBBBBK', 'KBBBBWBBBBK', 'KBBBWWWBBBK', 'KBWWWWWWWBK', 'KBBWWWWWBBK', 'KBBWBBBWKKK', 'KBBBBBBKWWK', 'KBBBBBBKWK', 'KBBBBBBKK', 'KKKKKKKK']),
   star: grid(12, ['.....KK', '....KYYK', '....KYYK', 'KKKKKYYKKKKK', 'KYYYYYYYYYYK', '.KYYYYYYYYK', '..KYYYYYYK', '..KYYYYYYK', '.KYYYKKYYYK', '.KYYK..KYYK', '.KKK....KKK']),
 }
 export type PixelIconName = keyof typeof pixelIcons

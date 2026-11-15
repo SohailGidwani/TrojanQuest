@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Catch, DemoState, Friend, Profile, Quest, Spot } from './types'
 import { addDemoVisit, awardCompletedQuests, parseAcceptedQuests, parseDemoState } from './collection'
 import type { AcceptedQuests } from './collection'
-import { stickerCatalogue } from './catalogue'
+import { registerStickers, stickerCatalogue } from './catalogue'
+import { challengeOpen, createQuest, expandQuest, isChallengeId, parseCustomQuests, validateDraft } from './customQuests'
+import type { CustomQuest, QuestDraft } from './customQuests'
 import { canEarn, rarityLabels } from './stickers'
 import { joinedFriends, maxPartySize, parseParties, parseRolls, rollReward } from './party'
 import type { RewardRoll, RewardRolls } from './party'
@@ -39,6 +41,11 @@ function rewardMessage(title: string, roll: RewardRoll) {
   if (roll.copies === 2) return `Party bonus! 2× “${title}” stickers${roll.capped ? ` (already ${tier}, the top tier)` : ''}.`
   return `Quest complete! “${title}” reward added. The party bonus didn’t land this time.`
 }
+// Challenges: limited-time quests created by students and student orgs. Demo-only until the server supports them (docs/challenges.md).
+const customQuestsKey = 'trojanquest:custom-quests:v1'
+/** The demo user also manages a sample student org, so both kinds of challenge can be tried. */
+export const demoOrg = { name: 'Demo Student Org' }
+function readCustomQuests() { try { return parseCustomQuests(JSON.parse(localStorage.getItem(customQuestsKey) ?? '[]')) } catch { return [] } }
 function readDemo() { try { return parseDemoState(localStorage.getItem(storageKey)) ?? initialDemoState } catch { return initialDemoState } }
 interface RemoteData { spots: Spot[]; catches: Catch[]; quests: Quest[]; friends: Friend[] }
 const empty: RemoteData = { spots: [], catches: [], quests: [], friends: [] }
@@ -53,6 +60,14 @@ export function useCollection(accessToken?: string, profile?: Profile, session: 
   const [acceptedByScope, setAcceptedByScope] = useState(readAccepted)
   const [partiesByScope, setPartiesByScope] = useState(() => readScoped(partiesKey, parseParties))
   const [rollsByScope, setRollsByScope] = useState(() => readScoped(rollsKey, parseRolls))
+  const [customQuests, setCustomQuests] = useState<CustomQuest[]>(readCustomQuests)
+  useEffect(() => { try { localStorage.setItem(customQuestsKey, JSON.stringify(customQuests)) } catch { setStorageWarning(true) } }, [customQuests])
+  // Created quests contribute a quest, pinned stops and stickers; register the stickers before anything renders them.
+  const created = useMemo(() => {
+    const expanded = customQuests.map(expandQuest)
+    registerStickers(expanded.flatMap(item => item.stickers))
+    return { quests: expanded.map(item => item.quest), spots: expanded.flatMap(item => item.spots) }
+  }, [customQuests])
   const joinTimers = useRef<number[]>([])
   useEffect(() => () => joinTimers.current.forEach(timer => window.clearTimeout(timer)), [])
   useEffect(() => {
@@ -97,13 +112,14 @@ export function useCollection(accessToken?: string, profile?: Profile, session: 
     } catch { setStorageWarning(true) }
     joinTimers.current.forEach(timer => window.clearTimeout(timer)); joinTimers.current = []
     setPartiesByScope(previous => ({ ...previous, demo: {} })); setRollsByScope(previous => ({ ...previous, demo: {} }))
-    setDemo(initialDemoState); setAcceptedByScope(withoutDemo); setMessage('')
+    setDemo(initialDemoState); setAcceptedByScope(withoutDemo); setCustomQuests([]); setMessage('')
   }
   const isDemo = mode === 'demo'
   const currentProfile = isDemo ? { display_name: 'Sohail', friend_code: 'TQSOHAIL' } : profile
-  const spots = isDemo ? demoSpots : remote.spots
+  const campusSpots = isDemo ? demoSpots : remote.spots
+  const spots = isDemo ? [...demoSpots, ...created.spots] : remote.spots
   const catches = isDemo ? demo.catches : remote.catches
-  const quests = isDemo ? demoQuests : remote.quests
+  const quests = isDemo ? [...demoQuests, ...created.quests] : remote.quests
   const friends = isDemo ? demoFriends.filter(friend => demo.friendIds.includes(friend.user_id)) : remote.friends
   const acceptedScope = isDemo ? 'demo' : currentProfile?.friend_code ?? 'account'
   const accepted = acceptedByScope[acceptedScope] ?? {}
@@ -129,9 +145,16 @@ export function useCollection(accessToken?: string, profile?: Profile, session: 
     if (!isDemo) return
     const spot = spots.find(item => item.id === id)
     if (spot && !canEarn(stickerCatalogue, spot.sticker_key)) { setMessage('This exclusive sticker isn’t available right now.'); return }
-    const next = addDemoVisit(demo, id, variant, spots, quests.filter(quest => accepted[quest.id]), undefined, stickerCatalogue)
+    // Ended challenges stop counting, so their rewards can no longer be earned.
+    const next = addDemoVisit(demo, id, variant, spots, quests.filter(quest => accepted[quest.id] && questOpen(quest.id)), undefined, stickerCatalogue)
     saveDemo(next)
     setMessage(rollNewRewards(demo.catches, next.catches) || 'Demo sticker added. Your quest progress is up to date.')
+  }
+  /** Official quests stay open; challenges close at their end date. */
+  function questOpen(questId: string) {
+    if (!isChallengeId(questId)) return true
+    const challenge = customQuests.find(item => `cq-${item.id}` === questId)
+    return !!challenge && challengeOpen(challenge)
   }
   const questDone = (questId: string) => catches.some(c => c.source === 'quest' && c.source_id === questId)
   function setPartyMember(questId: string, friendId: string, status: 'invited' | 'joined' | null, onlyIf?: 'invited') {
@@ -165,6 +188,7 @@ export function useCollection(accessToken?: string, profile?: Profile, session: 
     const quest = quests.find(item => item.id === id)
     if (!quest || accepted[id]) return
     if (!canEarn(stickerCatalogue, quest.reward_sticker_key)) { setMessage('This exclusive quest isn’t available right now.'); return }
+    if (!questOpen(id)) { setMessage('This challenge has ended.'); return }
     const now = new Date().toISOString()
     const next = { ...acceptedByScope, [acceptedScope]: { ...accepted, [id]: now } }
     setAcceptedByScope(next)
@@ -203,6 +227,31 @@ export function useCollection(accessToken?: string, profile?: Profile, session: 
     }
     return requestJSON<Catch[]>(`/api/friends/${encodeURIComponent(id)}/catches`, { accessToken, signal })
   }, [isDemo, demo.friendIds, accessToken])
-  return { mode, isDemo, profile: currentProfile, spots, catches, quests, friends, errors, message, setMessage, storageWarning, visit, collectSpot, accepted, acceptQuest, parties, rolls, inviteFriend, removeFromParty, partiesAvailable: isDemo, addFriend, friendBook, resetDemo, accessToken, reload: () => setRevision(value => value + 1) }
+  /** Publishes a challenge as the student or their org. Returns the problems to show, or an empty list once it's live. */
+  function createCustomQuest(draft: QuestDraft): string[] {
+    if (!isDemo) return ['Posting challenges is coming with the server update.']
+    const problems = validateDraft(draft, campusSpots)
+    if (problems.length) return problems
+    const quest = createQuest(draft, { student: currentProfile?.display_name ?? 'A student', org: demoOrg.name })
+    setCustomQuests(previous => [quest, ...previous])
+    setMessage(`“${quest.title}” is live on the Challenges tab.`)
+    return []
+  }
+  /** Removes a challenge along with its stickers, acceptance, party and reward roll. */
+  function deleteCustomQuest(questId: string) {
+    const quest = customQuests.find(item => `cq-${item.id}` === questId)
+    if (!isDemo || !quest) return
+    const prefix = `cq-${quest.id}-`
+    saveDemo({ ...demo, catches: demo.catches.filter(c => !(c.source === 'spot' && c.source_id.startsWith(prefix)) && !(c.source === 'quest' && c.source_id === questId)) })
+    const drop = <T,>(record: Record<string, T> | undefined) => { const next = { ...record }; delete next[questId]; return next }
+    const nextAccepted = { ...acceptedByScope, [acceptedScope]: drop(accepted) }
+    setAcceptedByScope(nextAccepted)
+    try { localStorage.setItem(acceptedKey, JSON.stringify(nextAccepted)) } catch { setStorageWarning(true) }
+    setPartiesByScope(previous => ({ ...previous, [acceptedScope]: drop(previous[acceptedScope]) }))
+    setRollsByScope(previous => ({ ...previous, [acceptedScope]: drop(previous[acceptedScope]) }))
+    setCustomQuests(previous => previous.filter(item => item.id !== quest.id))
+    setMessage(`“${quest.title}” was deleted.`)
+  }
+  return { mode, isDemo, profile: currentProfile, campusSpots, customQuests, createCustomQuest, deleteCustomQuest, canCreateQuests: isDemo, org: isDemo ? demoOrg : null, spots, catches, quests, friends, errors, message, setMessage, storageWarning, visit, collectSpot, accepted, acceptQuest, parties, rolls, inviteFriend, removeFromParty, partiesAvailable: isDemo, addFriend, friendBook, resetDemo, accessToken, reload: () => setRevision(value => value + 1) }
 }
 export type CollectionData = ReturnType<typeof useCollection>

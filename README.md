@@ -59,6 +59,38 @@ After building, Express serves the client at http://localhost:3001. The hunt and
 
 Missing credentials, database helpers or content produce explicit errors rather than fake results. See [team integration handoff](docs/sohail-handoff.md).
 
+## Backend work for Kartik
+
+**Quest parties: mostly done (PR #9).** Shared types, migration `202611150006_quest_parties.sql`, the five party routes and the server-side bonus roll (a database trigger matching `client/src/components/party.ts`) are in. Still open:
+- **A quest-completion writer.** The server must decide a traveller finished every required stop, then insert the quest reward catch, which lets the trigger roll the bonus. There's no live reward grant until this exists.
+- **Live client wiring, with the frontend.** Switch acceptance to `POST /api/quests/:id/accept` and `GET /api/me/quests`, call the party routes, show incoming invites, then set `partiesAvailable`.
+
+Details: [docs/quest-parties.md](docs/quest-parties.md).
+
+**Challenges: not started.** Challenges are limited-time quests posted by students and student orgs, working in the local demo. Live mode needs the following. Full spec: [docs/challenges.md](docs/challenges.md).
+
+- **Shared types**
+  - Add `Challenge`, `ChallengeStop` and `CreateChallengeRequest`, mirroring `CustomQuest` and `QuestDraft` in `client/src/components/customQuests.ts`.
+  - Add optional `colors` (background, highlight, outline) to `StickerDefinition`, for AI-designed stickers.
+- **Migrations**
+  - `challenges`: author kind, author or org, a review `status` (`pending | live | rejected | archived`), `starts_at` and `ends_at`.
+  - `challenge_stops`: campus place or pin, name, lore, art, colors.
+  - Reward stickers with reserved `cq-` keys and optional colors.
+  - `orgs` and `org_members`, starting with a team-approved org list. Only org admins can post as an org.
+- **Server rules** (match `validateDraft`; never trust the client):
+  - 1–8 stops, with pins within 1.5 km of campus;
+  - student challenges run up to 7 days, org challenges up to 30;
+  - reward rarity is Common, Rare or Epic only;
+  - nothing can be accepted or earned after `ends_at`;
+  - pinned stops use the same 50 m check as `POST /api/catch`;
+  - `accept_authored_quest` requires 3–5 stops, so challenges need their own acceptance path.
+- **Routes**
+  - `GET/POST /api/challenges`;
+  - `DELETE /api/challenges/:id` (archives it; earned stickers stay with students);
+  - `POST /api/challenges/:id/review` (team approval).
+
+The AI sticker designer (`POST /api/stickers/design`, in Sohail's `server/src/ai/`) is already built.
+
 ## Supabase setup (deferred)
 
 Put the project's URL and publishable (or legacy anon) key in your local `.env`:

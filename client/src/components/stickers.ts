@@ -14,6 +14,8 @@ export interface StickerDefinition {
   art?: string
   rarity: Rarity
   tags: string[]
+  /** Custom palette (background, highlight, outline), e.g. from the AI sticker designer. Overrides the edition colors. */
+  colors?: string[]
   lore?: string
   /** Exclusive stickers only: the window in which they can be earned. Once it ends they can never be earned again. */
   available_from?: string

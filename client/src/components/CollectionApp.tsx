@@ -8,16 +8,20 @@ import { currentQuest, questProgress } from './collection'
 import { Pin, PixelIcon } from './Pixel'
 import type { PixelIconName } from './Pixel'
 import { stickerCount } from './party'
+import { isChallengeId } from './customQuests'
 import { StickerBook } from '../stickerbook/StickerBook'
 import { SpotCard } from '../spots/SpotCard'
 import { QuestsScreen } from '../quests/QuestsScreen'
+import { QuestCreator } from '../quests/QuestCreator'
 import { FriendsScreen } from '../friends/FriendsScreen'
 import { GuideChat } from '../guide/GuideChat'
 import { HuntScreen } from '../map/HuntScreen'
 import { tutorialComplete } from '../map/trails'
-import '@fontsource/nunito/700.css'
-import '@fontsource/nunito/800.css'
-import '@fontsource/nunito/900.css'
+import '@fontsource/dm-sans/400.css'
+import '@fontsource/dm-sans/500.css'
+import '@fontsource/dm-sans/700.css'
+import '@fontsource/dm-sans/800.css'
+import '@fontsource/dm-sans/900.css'
 import '@fontsource/pixelify-sans/500.css'
 import '@fontsource/pixelify-sans/700.css'
 import { useCampusSession } from '../map/useCampusSession'
@@ -29,7 +33,7 @@ import './theme.css'
 
 const navigation: { to: string; label: string; icon: PixelIconName }[] = [
   { to: '/hunt', label: 'Hunt', icon: 'pin' },
-  { to: '/stickers', label: 'Collection', icon: 'book' }, { to: '/quests', label: 'Quests', icon: 'trophy' }, { to: '/friends', label: 'Friends', icon: 'heart' }, { to: '/guide', label: 'Campus guide', icon: 'chat' },
+  { to: '/stickers', label: 'Collection', icon: 'book' }, { to: '/quests', label: 'Quests', icon: 'trophy' }, { to: '/challenges', label: 'Challenges', icon: 'star' }, { to: '/friends', label: 'Friends', icon: 'heart' }, { to: '/guide', label: 'Campus guide', icon: 'chat' },
 ]
 // Quest icon wrapped in a ring showing how far along the current quest is.
 function QuestRing({ quest, visited, total }: { quest: Quest; visited: number; total: number }) {
@@ -56,14 +60,16 @@ function CollectionSession({ accessToken, profile, session }: CollectionProps & 
   const { pathname } = useLocation()
   // Drives the sliding highlight in the mobile tab bar; nested routes like /friends/:id keep their tab.
   const activeIndex = navigation.findIndex(item => pathname === item.to || pathname.startsWith(`${item.to}/`))
-  const current = currentQuest(data.quests, data.catches, data.accepted)
+  // The Quests tab's progress ring follows official quests; challenges have their own tab.
+  const current = currentQuest(data.quests.filter(quest => !isChallengeId(quest.id)), data.catches, data.accepted)
   function openSpot(spot: Spot) { setDetail({ spot, readOnly: false }) }
   const placesFound = new Set(data.catches.filter(c => c.source === 'spot').map(c => c.source_id)).size
   const questsDone = data.quests.filter(quest => questProgress(quest, data.catches).complete).length
   const stickers = stickerCount(data.catches.length, data.rolls)
+  const officialQuests = data.quests.filter(quest => !isChallengeId(quest.id)).length
   const hud = <span className="hud-stats" aria-label={`${placesFound} of ${data.spots.length} places found, ${stickers} stickers, ${questsDone} quests complete`}><span className="hud-stat places"><i aria-hidden="true"/>{placesFound}/{data.spots.length}</span><span className="hud-stat stickers"><i aria-hidden="true"/>{stickers}</span><span className="hud-stat quests"><i aria-hidden="true"/>{questsDone}/{data.quests.length}</span></span>
   return <div className={`collection-app${locked ? ' orientation-mode' : ''}`}><a href="#main-content" className="skip-link">Skip to content</a>
-    {!locked ? <aside className="sidebar"><Link to="/hunt" className="brand" aria-label="TrojanQuest home"><span className="brand-mark"><Pin size={40}/></span><span>Trojan<span>Quest</span><small>A little more campus.</small></span></Link><nav aria-label="Main navigation" style={{ '--nav-count': navigation.length, '--nav-index': activeIndex } as CSSProperties}>{activeIndex >= 0 ? <span className="nav-indicator" aria-hidden="true"/> : null}{navigation.map(item => <NavLink key={item.to} to={item.to} className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>{item.to === '/quests' && current ? <QuestRing {...current}/> : <PixelIcon name={item.icon} size={24}/>}<span>{item.label}</span>{item.to === '/quests' && data.quests.length ? <small>{data.quests.length}</small> : null}</NavLink>)}</nav>
+    {!locked ? <aside className="sidebar"><Link to="/hunt" className="brand" aria-label="TrojanQuest home"><span className="brand-mark"><Pin size={40}/></span><span>Trojan<span>Quest</span><small>A little more campus.</small></span></Link><nav aria-label="Main navigation" style={{ '--nav-count': navigation.length, '--nav-index': activeIndex } as CSSProperties}>{activeIndex >= 0 ? <span className="nav-indicator" aria-hidden="true"/> : null}{navigation.map(item => <NavLink key={item.to} to={item.to} className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>{item.to === '/quests' && current ? <QuestRing {...current}/> : <PixelIcon name={item.icon} size={24}/>}<span>{item.label}</span>{item.to === '/quests' && officialQuests ? <small>{officialQuests}</small> : null}</NavLink>)}</nav>
       <div className="sidebar-note"><span className="note-star">✦</span><h3>Go a little off-script.</h3><p>Your next favorite corner of campus might be one detour away.</p></div>
       <div className="sidebar-bottom">{data.isDemo ? <a href="/dev/ai" className="workbench-link"><Icon name="spark" size={17}/>AI workbench<Icon name="external" size={13}/></a> : null}<div className="profile"><span className="profile-avatar">{data.profile?.display_name.slice(0, 1).toUpperCase() || 'T'}</span><span><strong>{data.profile?.display_name || 'Your collection'}</strong><small>{data.isDemo ? 'Demo explorer' : 'Campus explorer'}</small></span><span className="profile-dot"/></div></div>
     </aside> : null}
@@ -75,7 +81,9 @@ function CollectionSession({ accessToken, profile, session }: CollectionProps & 
         {data.mode === 'signed-out' ? <PageHeading title="Your campus collection needs sign-in">Live discoveries are saved to a verified USC account. Sign-in is paused while the team finishes setup. The local demo remains available separately.</PageHeading> : data.mode === 'offline' ? <PageHeading title="Your collection couldn’t load">Retry above to restore your places and saved stickers before starting the hunt.</PageHeading> : data.mode === 'loading' ? <div className="loading-state" role="status"><span className="loading-emblem"><Pin size={56} mood="think"/></span>Opening your sticker book…</div> : <Routes>
           <Route path="/hunt" element={<HuntScreen key={huntVersion} data={data}/>}/>
           {!locked ? <><Route path="/stickers" element={<StickerBook spots={data.spots} catches={data.catches} quests={data.quests} onSpot={openSpot} rolls={data.rolls}/>}/>
-          <Route path="/quests" element={<QuestsScreen quests={data.quests} spots={data.spots} catches={data.catches} accepted={data.accepted} onAccept={data.acceptQuest} onSpot={openSpot} friends={data.friends} parties={data.parties} rolls={data.rolls} partiesAvailable={data.partiesAvailable} onInvite={data.inviteFriend} onRemove={data.removeFromParty}/>}/>
+          <Route path="/quests" element={<QuestsScreen quests={data.quests} spots={data.spots} catches={data.catches} accepted={data.accepted} onAccept={data.acceptQuest} onSpot={openSpot} friends={data.friends} parties={data.parties} rolls={data.rolls} partiesAvailable={data.partiesAvailable} onInvite={data.inviteFriend} onRemove={data.removeFromParty} customQuests={data.customQuests} canCreate={data.canCreateQuests} onDeleteQuest={data.deleteCustomQuest}/>}/>
+          <Route path="/challenges" element={<QuestsScreen variant="challenges" quests={data.quests} spots={data.spots} catches={data.catches} accepted={data.accepted} onAccept={data.acceptQuest} onSpot={openSpot} friends={data.friends} parties={data.parties} rolls={data.rolls} partiesAvailable={data.partiesAvailable} onInvite={data.inviteFriend} onRemove={data.removeFromParty} customQuests={data.customQuests} canCreate={data.canCreateQuests} onDeleteQuest={data.deleteCustomQuest}/>}/>
+          <Route path="/challenges/new" element={<QuestCreator campusSpots={data.campusSpots} canCreate={data.canCreateQuests} names={{ student: data.profile?.display_name, org: data.org?.name }} accessToken={accessToken} onCreate={data.createCustomQuest}/>}/>
           <Route path="/friends" element={<FriendsScreen data={data} onSpot={(spot, catches) => setDetail({ spot, catches, readOnly: true })}/>}/>
           <Route path="/friends/:friendId" element={<FriendsScreen data={data} onSpot={(spot, catches) => setDetail({ spot, catches, readOnly: true })}/>}/>
           <Route path="/guide" element={<GuideChat accessToken={accessToken}/>}/>
