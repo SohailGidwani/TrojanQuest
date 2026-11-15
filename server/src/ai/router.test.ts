@@ -31,6 +31,19 @@ function photoForm(bytes = Buffer.from([0xff, 0xd8, 0xff, 0xe0])) {
 }
 const headers = { Authorization: 'Bearer valid' };
 
+test('quest catalogue returns authored quests without an LLM call', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'trojanquest-quests-'));
+  const quests = [{ id: 'q1', title: 'First week', blurb: 'Explore campus', spot_ids: ['a', 'b', 'c'], reward_sticker_key: 'star' }];
+  try {
+    await writeFile(join(directory, 'quests.json'), JSON.stringify(quests));
+    await withApi(async url => {
+      const response = await fetch(`${url}/quests`, { headers });
+      assert.equal(response.status, 200);
+      assert.deepEqual(await response.json(), quests);
+    }, { contentDirectory: directory, model: new Ollama({ fetch: async () => { throw new Error('No LLM needed'); } }) });
+  } finally { await rm(directory, { recursive: true }); }
+});
+
 test('non-pop-up photos are rejected even before database helpers are available', async () => {
   await withApi(async url => {
     const response = await fetch(`${url}/popups/report`, { method: 'POST', headers, body: photoForm() });

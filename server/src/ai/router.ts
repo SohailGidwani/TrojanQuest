@@ -64,6 +64,9 @@ export function createAiRouter(overrides: Partial<RouterDependencies> = {}) {
       if (req.file) req.file.buffer = Buffer.alloc(0);
     }
   });
+  router.get('/quests', requireUser, async (_req, res) => {
+    res.json(await loadQuests(deps.contentDirectory));
+  });
   router.post('/quests/suggest', requireUser, limit('quest', 30), express.json({ limit: '8kb' }), async (req, res) => {
     const { interests } = z.object({ interests: z.string().trim().min(1).max(1000) }).parse(req.body);
     res.json(await suggestQuests(interests, await loadQuests(deps.contentDirectory), deps.model));

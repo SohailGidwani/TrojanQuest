@@ -12,7 +12,9 @@ ollama pull qwen3-vl:4b-instruct
 npm run dev:demo
 ```
 
-Keep Ollama running, then open http://127.0.0.1:5173/dev/ai. Upload a pop-up photo to generate a sticker and temporary pin; report it again to test merging, or try an unrelated photo to test rejection. The workbench also calls the quest and guide routes once Cal's content is present. This is an AI integration tool, not the team's product frontend.
+Keep Ollama running. Open http://127.0.0.1:5173 for the sticker book, quests, friends and guide preview. Demo visits and friend codes work without sign-in; the clearly labeled collection uses sample content and browser-local progress. Try a day visit to Philosophy Library to finish a quest, and TQRINA to add a friend. See [the frontend handoff](docs/shibhiya-handoff.md) and [the short walkthrough](docs/previews/collection-walkthrough.mp4).
+
+The separate AI workbench remains at http://127.0.0.1:5173/dev/ai. Upload a pop-up photo to generate a sticker and temporary pin; report it again to test merging, or try an unrelated photo to test rejection. The real guide still needs Cal's saved USC pages; its UI displays a clear unavailable state until they exist.
 
 Demo mode uses real Ollama inference and an isolated in-memory popup store, requires no Supabase credentials, and shares one local demo identity. Pins and hourly limits reset when the server restarts. It bypasses sign-in only with `DEMO_MODE=true` and `NODE_ENV=development`; both dev servers bind to loopback. Demo mode refuses to start outside development and does not mount Kartik's production database routes. The regular `npm run dev` keeps the USC session checks.
 
@@ -38,7 +40,7 @@ npm run build
 npm start
 ```
 
-After building, Express serves the client at http://localhost:3001. The client is the generated Vite starter; teammates own the product screens. `GET /api/health` is available without credentials.
+After building, Express serves the client at http://localhost:3001. The collection/social screens are implemented; real data still needs Kartik's backend and Cal's content. `GET /api/health` is available without credentials. Normal operation requires a verified USC session; use the explicit local demo while sign-in is deferred.
 
 ## Sohail's implementation
 
@@ -46,6 +48,7 @@ After building, Express serves the client at http://localhost:3001. The client i
 - Native Ollama `/api/chat` with JSON-schema output and Zod validation, using the Apache-2.0 Qwen3-VL 4B instruct vision model. No paid LLM API key or image generation. [Ollama structured outputs](https://docs.ollama.com/capabilities/structured-outputs), [model and license](https://ollama.com/library/qwen3-vl:4b-instruct).
 - Duplicate reports merge only when brand matches, pin is live, distance is at most 100 m and creation is within two hours. Merging returns the existing sticker and does not count as a confirmation. Unconfirmed pins start with at most 30 minutes; Kartik's confirm route extends them.
 - `POST /api/quests/suggest`: `{ "interests": "CS freshman who studies late" }`; ranks authored quests, drops invented IDs and duplicates, appends omitted quests. Returns existing quest objects only.
+- `GET /api/quests`: returns Cal's authored quest catalogue without invoking the LLM.
 - `POST /api/guide/ask`: `{ "question": "Where can I get help?" }`; returns exact, verified source excerpts with server-owned citations, or a refusal. This deliberately uses quotations to prevent unsupported paraphrases. Guide and quest routes allow 30 requests per user per hour.
 
 Missing credentials, database helpers or content produce explicit errors rather than fake results. See [team integration handoff](docs/sohail-handoff.md).
@@ -77,4 +80,4 @@ Optional tooling: I strongly recommend `npm i -g vercel` if you want agentic Ver
 
 ## Ownership
 
-Sohail owns root configuration, `server/src/index.ts` and `server/src/ai/`. Kartik owns database code, non-AI routes and shared types. Manaswi owns map/capture/app/lib; Shibhiya owns components and collection/social screens; Cal owns content, art and pitch. Skeleton-only `.gitkeep` files preserve their empty folders.
+Sohail owns root configuration, `server/src/index.ts` and `server/src/ai/`, and has taken over Shibhiya's components and collection/social screens with user authorization. Kartik owns database code, non-AI routes and shared types. Manaswi owns map/capture/app/lib; Cal owns content, art and pitch. Skeleton-only `.gitkeep` files preserve their empty folders.
