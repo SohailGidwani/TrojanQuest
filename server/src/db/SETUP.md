@@ -2,8 +2,8 @@
 
 The backend provides shared types, seven core tables with RLS, an authored sticker catalogue, private per-user
 pop-up confirmations, read routes, sticker collection, confirmation writes,
-profiles/friends, and the two database helpers consumed by Sohail's AI. Quest
-reward completion remains future work.
+profiles/friends, authored quest acceptance, and the two database helpers consumed
+by Sohail's AI. Quest reward completion remains future work.
 
 ## Set up Supabase
 
@@ -13,13 +13,15 @@ reward completion remains future work.
    - `supabase/migrations/202611140002_collection_and_confirmation.sql`
    - `supabase/migrations/202611140003_profiles_and_friends.sql`
    - `supabase/migrations/202611140004_sticker_catalogue.sql`
+   - `supabase/migrations/202611140005_quest_acceptance.sql`
 
    Apply only migrations not already recorded as applied. The second adds private
    confirmations, reporter backfill and collection functions. The third adds
    profile/friend RPCs and a case-insensitive unique friend-code index; it stops
    rather than changing existing codes if normalized duplicates already exist.
    The fourth adds the catalogue, atomic seed import, exclusive-edition guards
-   and catalogue-aware collection. None deletes existing spots or catches.
+   and catalogue-aware collection. The fifth adds private per-user acceptances
+   and checked acceptance/list RPCs. None deletes existing spots or catches.
    If tables already exist outside this migration history, reconcile them rather
    than resetting a shared project.
 2. For database-backed operation, use the verified USC email OTP configuration in
@@ -54,6 +56,19 @@ reward completion remains future work.
    for real spot/org catches; missing keys return 503 instead of assuming common
    rarity or bypassing an unknown exclusive window. Existing spots that use base
    art keys must be updated to Cal's actual catalogue keys before real collection.
+
+   When `content/quests.json` is present, ordinary spots/catalogue seeding also
+   validates its 3–5 distinct stops, unique quest IDs, reward keys and referenced
+   spot sticker definitions before writing anything. To check an alternate file:
+
+   ```sh
+   node --import tsx --env-file=.env scripts/seed.ts --file <spots-path> --quests <quests-path> --dry-run
+   ```
+
+   `--quests` cannot be used with `--stickers-only`, because a full spots list is
+   needed to check references. Validation does not copy/publish the alternate
+   quest file or create a quests table; live acceptance reads the server's
+   `content/quests.json`. Missing authored content is not replaced by demo quests.
 5. Run `npm run dev`. Restart the server once after first adding the route module.
 
 ## API handoff
@@ -102,7 +117,39 @@ Realtime sticker JSON keep the existing interface; that separate schema was not
 changed. Confirmation rules are unchanged and cannot revive expired pins.
 
 Quest rewards still return `quest_not_available`. This does not add quest
-acceptance, order/photo rules or a way to claim arbitrary catalogue keys.
+reward completion, order/photo rules or a way to claim arbitrary catalogue keys.
+
+### Accepting authored quests
+
+- `POST /api/quests/:id/accept` takes an empty body or `{}`. It loads and validates
+  the server's authored quest file and looks up the URL's quest ID. Clients cannot
+  submit user IDs, acceptance times, stops, snapshots or reward keys. Extra JSON
+  fields return 400.
+- Success is 200 `{quest_id,accepted_at,already_accepted}`. The database sets the
+  timestamp. Repeating an acceptance returns the original time with
+  `already_accepted:true`, without changing the stored definition snapshot.
+- `GET /api/me/quests` returns `QuestAcceptance[]` (`{quest_id,accepted_at}`), newest
+  first. Query parameters cannot select another account. It still works if an
+  authored file is temporarily missing or a previously accepted quest is removed.
+- Unknown published IDs return 404; missing/invalid authored files or unseeded
+  stop/reward definitions return 503. A new acceptance requires the reward to be
+  available: upcoming exclusive rewards return 409 and ended rewards 410.
+- Retries for an already accepted, still-published quest preserve its original
+  snapshot/time even after its reward expires. This acknowledges an existing
+  record; it does not reopen a reward window or award a sticker. Removed quests
+  remain in the list but cannot be accepted again through an unpublished ID.
+
+The server-only RPC checks seeded spot IDs, their sticker definitions, and the
+reward catalogue in the same transaction. Each `(user_id,quest_id)` can exist only
+once, and browser RLS exposes only the current user's acceptance rows. The
+service role cannot update/delete snapshots or original timestamps through table
+grants. No location, selfie or proof is saved.
+
+The frontend owner can populate its accepted-quest map from `/api/me/quests`, then
+refresh it after acceptance. Its existing browser-only demo stays separate; these
+routes are not mounted in `dev:demo`. This change does not edit their screens.
+Acceptance does not decide stop ordering, whether old visits count, photo proof,
+completion, or reward granting. `/api/catch` still rejects quest-source claims.
 
 ### Profiles and friends
 
@@ -220,7 +267,7 @@ load existing pins through `/api/popups` and remove pins at `expires_at` even if
 there is no new database event. Expiry is checked on read; there is no cron job.
 
 All tables enable RLS. Verified USC users can read places, public pins and
-org drops, and only their own profile, catches and friendship rows. Browser writes
+org drops, and only their own profile, catches, friendship and acceptance rows. Browser writes
 are disabled. The write routes validate the session; SQL also rechecks that the
 actor is a confirmed, non-anonymous USC user. Friend-book access is available only
 through the relationship-checked server route, not by widening browser RLS.
@@ -246,11 +293,12 @@ node scripts/test-migration.mjs .backend-tools/node_modules/@electric-sql/pglite
 
 Keep `.backend-tools/` and any local npm cache out of commits. The migration test
 creates isolated auth fixtures, checks privileged RPCs, distance/expiry/deduplication,
-RLS, direct-write denial, all four migrations, initial reporter backfill, collection
+RLS, direct-write denial, all five migrations, initial reporter backfill, collection
 eligibility, duplicate requests, time boundaries, confirmation extensions, and
 catalogue validation/atomic import, exclusive boundaries and closed-edition guards,
 profile/code creation and collisions, directed friend authorization, ineligible
-targets, private response fields and the publication table list. PGlite queues
+targets, acceptance timestamps/snapshots/availability/duplicates, absence of reward
+side effects, private response fields and the publication table list. PGlite queues
 queries on one database connection;
 multi-connection contention is not exercised by these tests. They cannot test
 hosted email delivery, PostgREST configuration or actual WebSocket delivery.

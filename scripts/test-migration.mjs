@@ -5,6 +5,7 @@ import { pathToFileURL } from 'node:url';
 import { checkCollection } from './test-collection.mjs';
 import { checkFriends } from './test-friends.mjs';
 import { checkStickers } from './test-stickers.mjs';
+import { checkQuestAcceptance } from './test-quests.mjs';
 
 // Optional test dependency, kept outside the team's application lockfile.
 // Pass a module path when PGlite is installed in a separate tooling directory.
@@ -96,4 +97,6 @@ try {
   await checkFriends(db, { a, b, outside, unverified, anonymous });
   await db.exec(await readFile(new URL('../supabase/migrations/202611140004_sticker_catalogue.sql', import.meta.url), 'utf8'));
   await checkStickers(db, { a, b, outside, unverified, anonymous, popupId: created.id });
+  await db.exec(await readFile(new URL('../supabase/migrations/202611140005_quest_acceptance.sql', import.meta.url), 'utf8'));
+  await checkQuestAcceptance(db, { a, b, outside, unverified, anonymous });
 } finally { await db.close(); }
