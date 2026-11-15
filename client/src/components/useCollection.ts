@@ -1,10 +1,22 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { Catch, DemoState, Friend, Profile, Quest, Spot } from './types'
-import { addDemoVisit, parseDemoState } from './collection'
+import { addDemoVisit, awardCompletedQuests, parseAcceptedQuests, parseDemoState } from './collection'
+import type { AcceptedQuests } from './collection'
+import { stickerCatalogue } from './catalogue'
+import { canEarn } from './stickers'
 import { demoFriendBooks, demoFriends, demoQuests, demoSpots, initialDemoState } from './mock'
 import { requestJSON, RequestError } from './api'
 
 const storageKey = 'trojanquest:collection-demo:v1'
+// Accepted quests live in this browser until there is a backend route for them, scoped per demo/account.
+const acceptedKey = 'trojanquest:accepted-quests:v1'
+function readAccepted(): Record<string, AcceptedQuests> {
+  try {
+    const data: unknown = JSON.parse(localStorage.getItem(acceptedKey) ?? '{}')
+    if (!data || typeof data !== 'object' || Array.isArray(data)) return {}
+    return Object.fromEntries(Object.entries(data).map(([scope, value]) => [scope, parseAcceptedQuests(value)]))
+  } catch { return {} }
+}
 function readDemo() { try { return parseDemoState(localStorage.getItem(storageKey)) ?? initialDemoState } catch { return initialDemoState } }
 interface RemoteData { spots: Spot[]; catches: Catch[]; quests: Quest[]; friends: Friend[] }
 const empty: RemoteData = { spots: [], catches: [], quests: [], friends: [] }
@@ -16,6 +28,7 @@ export function useCollection(accessToken?: string, profile?: Profile) {
   const [message, setMessage] = useState('')
   const [storageWarning, setStorageWarning] = useState(false)
   const [revision, setRevision] = useState(0)
+  const [acceptedByScope, setAcceptedByScope] = useState(readAccepted)
   useEffect(() => {
     const controller = new AbortController()
     async function load() {
@@ -46,10 +59,29 @@ export function useCollection(accessToken?: string, profile?: Profile) {
   const catches = isDemo ? demo.catches : remote.catches
   const quests = isDemo ? demoQuests : remote.quests
   const friends = isDemo ? demoFriends.filter(friend => demo.friendIds.includes(friend.user_id)) : remote.friends
+  const acceptedScope = isDemo ? 'demo' : currentProfile?.friend_code ?? 'account'
+  const accepted = acceptedByScope[acceptedScope] ?? {}
   function visit(id: string, variant: 'morning' | 'day' | 'night') {
     if (!isDemo) return
-    saveDemo(addDemoVisit(demo, id, variant, spots, quests))
+    const spot = spots.find(item => item.id === id)
+    if (spot && !canEarn(stickerCatalogue, spot.sticker_key)) { setMessage('This exclusive sticker isn’t available right now.'); return }
+    saveDemo(addDemoVisit(demo, id, variant, spots, quests.filter(quest => accepted[quest.id]), undefined, stickerCatalogue))
     setMessage('Demo sticker added. Your quest progress is up to date.')
+  }
+  function acceptQuest(id: string) {
+    const quest = quests.find(item => item.id === id)
+    if (!quest || accepted[id]) return
+    if (!canEarn(stickerCatalogue, quest.reward_sticker_key)) { setMessage('This exclusive quest isn’t available right now.'); return }
+    const now = new Date().toISOString()
+    const next = { ...acceptedByScope, [acceptedScope]: { ...accepted, [id]: now } }
+    setAcceptedByScope(next)
+    try { localStorage.setItem(acceptedKey, JSON.stringify(next)); setStorageWarning(false) } catch { setStorageWarning(true) }
+    // Places visited before accepting still count, so an already-finished quest is rewarded right away.
+    if (isDemo) {
+      const catches = awardCompletedQuests(demo.catches, [quest], now, stickerCatalogue)
+      if (catches.length !== demo.catches.length) { saveDemo({ ...demo, catches }); setMessage(`Quest complete! “${quest.title}” reward added.`); return }
+    }
+    setMessage(`Quest accepted: “${quest.title}”. Visit its places in any order.`)
   }
   async function addFriend(code: string) {
     const friend_code = code.trim().toUpperCase()
@@ -72,6 +104,6 @@ export function useCollection(accessToken?: string, profile?: Profile) {
     }
     return requestJSON<Catch[]>(`/api/friends/${encodeURIComponent(id)}/catches`, { accessToken, signal })
   }, [isDemo, demo.friendIds, accessToken])
-  return { mode, isDemo, profile: currentProfile, spots, catches, quests, friends, errors, message, setMessage, storageWarning, visit, addFriend, friendBook, accessToken, reload: () => setRevision(value => value + 1) }
+  return { mode, isDemo, profile: currentProfile, spots, catches, quests, friends, errors, message, setMessage, storageWarning, visit, accepted, acceptQuest, addFriend, friendBook, accessToken, reload: () => setRevision(value => value + 1) }
 }
 export type CollectionData = ReturnType<typeof useCollection>

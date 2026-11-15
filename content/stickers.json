@@ -1,0 +1,25 @@
+{
+  "stickers": [
+    { "key": "leavey", "name": "Leavey Library", "art": "book", "rarity": "common", "tags": ["study", "library", "late night"] },
+    { "key": "doheny", "name": "Doheny Library", "art": "book", "rarity": "rare", "tags": ["study", "library", "landmark"] },
+    { "key": "philosophy", "name": "Philosophy Library", "art": "star", "rarity": "rare", "tags": ["study", "library", "quiet"] },
+    { "key": "village", "name": "USC Village", "art": "bowl", "rarity": "common", "tags": ["eat", "food", "shopping"] },
+    { "key": "campus-center", "name": "Tutor Campus Center", "art": "bubble", "rarity": "common", "tags": ["eat", "food", "student life"] },
+    { "key": "mccarthy", "name": "McCarthy Quad", "art": "flag", "rarity": "common", "tags": ["hang out", "outdoors", "events"] },
+    { "key": "alumni", "name": "Alumni Park", "art": "leaf", "rarity": "common", "tags": ["chill", "outdoors", "green space"] },
+    { "key": "bovard", "name": "Bovard Auditorium", "art": "flag", "rarity": "rare", "tags": ["hang out", "landmark", "performances"] },
+    { "key": "exposition", "name": "Exposition Park", "art": "leaf", "rarity": "rare", "tags": ["chill", "outdoors", "museums"] },
+    { "key": "health", "name": "Student Health", "art": "heart", "rarity": "common", "tags": ["essentials", "wellbeing", "resource"] },
+    { "key": "career", "name": "Career Center", "art": "bolt", "rarity": "common", "tags": ["essentials", "careers", "resource"] },
+    { "key": "cultural", "name": "Cultural Centers", "art": "heart", "rarity": "common", "tags": ["essentials", "community", "resource"] },
+    { "key": "tutoring", "name": "Tutoring Resources", "art": "book", "rarity": "common", "tags": ["essentials", "academics", "resource"] },
+    { "key": "fertitta", "name": "Fertitta Hall", "art": "bolt", "rarity": "common", "tags": ["study", "business"] },
+    { "key": "tutor", "name": "Ronald Tutor Hall", "art": "star", "rarity": "common", "tags": ["hang out", "engineering"] },
+    { "key": "quest-study-tour", "name": "Focus Finder", "art": "book", "rarity": "epic", "tags": ["quest reward", "study", "library"] },
+    { "key": "quest-campus-break", "name": "Campus Catch-up", "art": "bowl", "rarity": "epic", "tags": ["quest reward", "food", "outdoors"] },
+    { "key": "quest-first-week", "name": "First-week Toolkit", "art": "heart", "rarity": "legendary", "tags": ["quest reward", "essentials", "resource"] },
+    { "key": "quest-fresh-air", "name": "Fresh Air", "art": "leaf", "rarity": "epic", "tags": ["quest reward", "outdoors", "chill"] },
+    { "key": "quest-fall-trail", "name": "Fall Trail 2026", "art": "leaf", "rarity": "exclusive", "tags": ["quest reward", "seasonal", "fall 2026"], "available_from": "2026-11-01T00:00:00-08:00", "available_until": "2026-12-01T00:00:00-08:00" },
+    { "key": "quest-homecoming", "name": "Homecoming 2026", "art": "flag", "rarity": "exclusive", "tags": ["quest reward", "event", "homecoming"], "available_from": "2026-10-20T00:00:00-07:00", "available_until": "2026-11-09T00:00:00-08:00" }
+  ]
+}
